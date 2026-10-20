@@ -16,15 +16,16 @@ htmlcov/
 # Notebooks
 .ipynb_checkpoints/
 
-# Data & Large Files
-data/processed/*
-!data/processed/.gitkeep
-*.sqlite
-*.sqlite3
-
 # Results & Logs
 results/*
 !results/.gitkeep
+!results/*.json
+!results/*.png
+data/processed/*
+!data/processed/.gitkeep
+!data/processed/splits.json
+*.sqlite
+*.sqlite3
 *.log
 
 # OS & Editor
