@@ -1,0 +1,21 @@
+# DOCUMENT_ID: POL_011
+# CATEGORY: Politics
+# TITLE: "Virtual fence" along US-Mexico border scrapped
+# SOURCE: Wikinews
+# URL: https://en.wikinews.org/wiki/%22Virtual_fence%22_along_US-Mexico_border_scrapped
+# WORD_COUNT: 438
+============================================================
+Thursday, March 18, 2010
+ 
+
+United States Secretary of Homeland Security Janet Napolitano has announced that the US Government has ended funding for a controversial "virtual fence" along the US-Mexico border.
+
+The program, called  SBInet, will have $50 million from the American Recovery and Reinvestment Act of 2009 that was allocated to it withdrawn in favor of investment in other, immediately available technology for the purposes of security along the border.  The program will also have all further funding immediately frozen; as a result, all work will halt on the project beyond two small test projects in Arizona.  Officially, the move is in light of a pending reassessment of the program, though it is likely that it signals the end of the five-year project, which has come under mounting criticism based on cost and the time taken to complete the project.
+In a statement, Napolitano said that, "effective immediately, the Department of Homeland Security will redeploy $50 million of Recovery Act funding originally allocated for the SBInet...to other tested, commercially available security technology along the Southwest border."  
+Criticism of the project has been largely based on the cost, which has been commented on by several government officials, including Senator John McCain, who criticized the program as "spending over $1 billion of taxpayers' dollars on a failed system of sensors and cameras."  According to statements released last year, at the beginning of construction, the project would cost a total of $6.7 billion, of which $3.4 billion has been spent on the first phase of the plan.  The shortcomings were acknowledged by Napolitano in her statement, which said that "the system of sensors and cameras along the Southwest border known as SBInet has been plagued with cost overruns and missed deadlines."
+The project was originally introduced in 2006 by President George W. Bush, and was envisioned as a high-tech system, dubbed a "virtual fence," that combined cameras, radar, and sensors to allow the Border Patrol to intercept up to 85% of incursions with as few as 22,000 officers.  The contract was awarded to Boeing, which has since come under criticism for developing costly new technologies rather than using off-the-shelf systems.  Under Barack Obama, the government initially continued to support the program, and laid out a new timetable for the its completion.  Last month, however, under questioning from Congress about the program's viability, the administration reduced funding to complete the first phase by 30%, to $574 million.
+
+
+== Sources ==
+Spencer S. Hsu. Work to cease on 'virtual fence' along U.S.-Mexico border — The Washington Post, March 16, 2010
+Tim Gaynor. U.S. puts brakes on "virtual" border fence —  March 16, 2010

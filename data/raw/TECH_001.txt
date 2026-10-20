@@ -1,0 +1,28 @@
+# DOCUMENT_ID: TECH_001
+# CATEGORY: Technology
+# TITLE: 2008 TICA highlights open source applications at Linux Forum & Expo
+# SOURCE: Wikinews
+# URL: https://en.wikinews.org/wiki/2008_TICA_highlights_open_source_applications_at_Linux_Forum_%26_Expo
+# WORD_COUNT: 302
+============================================================
+Thursday, July 31, 2008
+ 
+
+Leading up to the 2008 Taipei Computer Applications Show (TICA), the 8th-annual Linux Forum, accompanied with Linux Expo Pavilion, started yesterday July 30 at Taipei World Trade Center Conference Roon 3 & 4 to promote the open source applications in Taiwan.
+With popularity of OLPC and Eee PC, mobile applications, low-price PCs, embedded systems, and enterprise applications are enrolled into the Linux Forum by forum organizer, Industrial Development Bureau of Ministry of Economic Affairs of the Republic of China.
+Since Linux-related solutions were promoted at Softex Taipei 2008 by Taipei Computer Association, as well as the organizer of TICA and Softex shows, executives from industrial, academical, and governmental people mostly cautioned the importance of Linux, which had also become another choice to be built inside a computer after OLPC and Eee PC.
+As several required functions from business software are built in some open source software, software and platforms complied with open source had become the second choice for consumers. UPP, an open source platform built by United Daily News Digital Corporation, is a typical example on open source application integrated to a USB flash drive.
+Apart from basic applications, some companies also demonstrated some examples of deploying and programming on a Linux-based platform. In addition, some experts recommended enterprises to consider user needs before introducing Linux as the desktop platform in the enterprise.
+After the Linux Forum, the Linux Expo will also showcase solutions of open source at TICA.
+
+
+== Related News ==
+"Wikinews reports from 2008 Taiwan Open Source Developers' Conference" — Wikinews, April 13, 2008
+
+
+== Sources ==
+All the sources are in "Chinese-language" only.
+
+ 自由軟體應用 產官學一起來 — United Daily News, July 24, 2008.
+ Linux Forum 2008 7月30~31日世貿展一館2樓盛大展出 — DigiTimes, July 24, 2008
+ Linux Forum 2008 即將在七月底盛大展開！ — Open Source Software Foundry, July 11, 2008

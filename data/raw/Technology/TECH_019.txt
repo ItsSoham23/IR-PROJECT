@@ -1,0 +1,24 @@
+# DOCUMENT_ID: TECH_019
+# CATEGORY: Technology
+# TITLE: GNOME to be Ubuntu's default desktop environment, Canonical to stop investing in Ubuntu Phone
+# SOURCE: Wikinews
+# URL: https://en.wikinews.org/wiki/GNOME_to_be_Ubuntu's_default_desktop_environment%2C_Canonical_to_stop_investing_in_Ubuntu_Phone
+# WORD_COUNT: 403
+============================================================
+Saturday, April 8, 2017
+ 
+
+On Wednesday, Mark Shuttleworth, founder of the Ubuntu operating system, announced the open source OS will end its ties with the Unity8 desktop environment and that Ubuntu 18.04 LTS (Long Term Service) will be shipped with the GNOME desktop environment by default. Unity has been Ubuntu's default desktop environment since it was released six years ago in 2011.
+In his blog post, Shuttleworth explained growth of products are decided by the market and the community. Canonical, Ltd., the software company behind Ubuntu, could not gain investors from Unity8, Ubuntu Phone and the convergence shell. Instead, they are shifting their Ubuntu focus on to cloud and IoT (Internet of Things), which Shuttleworth notes finds application in "auto, robotics, networking, and machine learning".
+Canonical — after making controversial desktop environment Unity the default — launched their own smartphone in 2013, called Ubuntu Edge, with a crowd funding campaign target of US$32 million but could not cross the US$13 million mark. A couple of years later, Canonical partnered with bq, Fairphone and Meizu to launch Ubuntu phones. Unity worked  for Ubuntu phones but did not perform well in the global market. "I'm not giving up! I will do my best to keep Ubuntu touch and Unity8 standing on both it's legs!", Ubports' developer Marius Gripsgård posted on his Google+ profile on Wednesday.
+"The choice, ultimately, is to invest in the areas which are contributing to the growth of the company", Shuttleworth wrote in the blog. Following this announcement, GNOME tweeted, "Welcome back Canonical! Ubuntu 18.04 LTS to ship with GNOME by default!". 
+Currently, Ubuntu is available in various desktop environments like Ubuntu GNOME (GNOME), Ubuntu MATE (MATE), Xubuntu (XFCE), Kubuntu (KDE Plasma), Lubuntu (LXDE) and Ubuntu Budgie (Budgie), though Unity remains the default for the upcoming version, 17.04 (Zesty Zapus).
+
+
+== Sources ==
+ Ubuntu ends Unity software unification project — BBC Online, April 6, 2017
+Mark Shuttleworth. Growing Ubuntu for cloud and IoT, rather than phone and convergence — Ubuntu Insights, April 5, 2017
+GNOME. GNOME on Twitter — Twitter, April 5, 2017
+Marius Gripsgård. I'm not giving up! I will do my best to keep Ubuntu touch and Unity8 standing... — Google+, April 5, 2017
+Abhishek Prakash. Canonical Shuts Door On Unity, Ubuntu Phone And Convergence — It's FOSS, April 5, 2017
+Bryan Bishop. Ubuntu Edge smartphone misses its crowdfunding goal by over $19 million — The Verge, August 22, 2013

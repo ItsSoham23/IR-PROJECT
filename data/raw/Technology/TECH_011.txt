@@ -1,0 +1,26 @@
+# DOCUMENT_ID: TECH_011
+# CATEGORY: Technology
+# TITLE: EU report in favour of adopting open source software
+# SOURCE: Wikinews
+# URL: https://en.wikinews.org/wiki/EU_report_in_favour_of_adopting_open_source_software
+# WORD_COUNT: 226
+============================================================
+Thursday, January 18, 2007
+ 
+
+An EU Commission-funded research studied costs and benefits of adopting open source software, such as Linux or OpenOffice.org instead of proprietary software such as Microsoft Windows or Microsoft Office. 
+
+The study was conducted on six organizations from European nations. The study concluded that:
+
+In addition,
+
+The study also reported that they found "no particular delays or lost of time in the daily work due to the use of OpenOffice.org" (p. 283) instead of Microsoft Office. 
+
+This is bad news for Microsoft, who is in a legal battle with European Union over its monopolist behaviors. It is also competing with a number of open source software distributors for the market. Microsoft recently released an update to its popular operating system Windows, as well as to its browser Internet Explorer and its office productivity suite Microsoft Office. These products are competing with distributors such as Red Hat, Firefox, and OpenOffice.org. 
+
+
+== Sources ==
+Rishab Aiyer Ghosh, MERIT. Study on the: Economic impact of open source software on innovation and the competitiveness of the Information and Communication Technologies (ICT) sector in the EU — European Commission, November 20, 2006
+ Open source gets European boost — BBC News Online, January 17, 2007
+ Study: Open-source software can boost EU economy — EurActiv.com, January 17, 2007
+ European Commission vouches for open source — CNet News, January 16, 2007

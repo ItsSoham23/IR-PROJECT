@@ -1,0 +1,15 @@
+# DOCUMENT_ID: TECH_023
+# CATEGORY: Technology
+# TITLE: Homeland Security helps secure open-source code
+# SOURCE: Wikinews
+# URL: https://en.wikinews.org/wiki/Homeland_Security_helps_secure_open-source_code
+# WORD_COUNT: 72
+============================================================
+Friday, January 13, 2006
+ 
+
+The U.S. Department of Homeland Security has dedicated $1.24 million in funding in its effort to protect open-source software. Stanford University, Coverity and Symantec have all taken up the challenge to perform daily scans of code, hunting for security bugs. An automated system to achieve this search will be in place by March '06.
+
+
+== Sources ==
+Joris Evers. Homeland Security helps secure open-source code — CNET_News.com, 01/10/06

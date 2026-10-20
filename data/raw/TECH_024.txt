@@ -1,0 +1,33 @@
+# DOCUMENT_ID: TECH_024
+# CATEGORY: Technology
+# TITLE: IBM Releases 500 patents to open source community
+# SOURCE: Wikinews
+# URL: https://en.wikinews.org/wiki/IBM_Releases_500_patents_to_open_source_community
+# WORD_COUNT: 398
+============================================================
+Saturday, January 15, 2005
+ 
+United States —
+"IBM hereby commits not to assert any of the 500 U.S. patents listed below, as well as all counterparts of these patents issued in other countries, against the development, use or distribution of Open Source Software." 
+[1]
+So begins the pledge IBM has made to "any individual, community, or company" writing or using software defined as "open source" by the Open Source Initiative (OSI).
+The patents include software for text recognition and database management.[2]
+"True innovation leadership is about more than just the numbers of patents granted. It's about innovating to benefit customers, partners and society", said Dr. John E. Kelly, IBM senior vice president, Technology and Intellectual Property. "Our pledge today is the beginning of a new era in how IBM will manage intellectual property."
+[3]
+"This is not a one-time event", said Dr. Kelly. "While IBM will continue to demonstrate leadership in patent output, through measures such as today's pledge, we will increasingly use patents to encourage and protect global innovation and interoperability through open standards and we urge others to do so as well."
+Lawrence Lessig, law professor at Stanford Law School and free software proponent commented:  "This is exciting.  It is IBM making good on its commitment to encourage a different kind of software development and recognizing the burden that patents can impose."
+[4]
+Not all are confident of IBM's motives, though.
+Florian Mueller, campaign manager of anti-patent website,
+NoSoftwarePatents.com, accused IBM of hypocrisy because of lobbying in the European Union to push through the
+Computer Implemented Inventions Directive.
+"IBM is just being hypocritical because they want to appease the open source community and make themselves popular," said Mueller.
+"In Europe, IBM is a driving force behind the extension of the scope of patentability with respect to software. If IBM wants to assume the role of a post-Christmas benefactor, they'd better stop their aggressive patent lobbying in the EU and their shameless squeezing of small and medium-sized companies with its patent portfolio." 
+[5]
+
+
+== References ==
+ Feast for open source as IBM opens patent pantry — IBM, Jan 11 2005
+(pdf file)  IBM Statement of Non-Assertion of Named Patents Against OSS — IBM, Jan 11 2005
+Pamela Jones. IBM Gives FOSS Free Access to 500 Patents - Rethinks IP Management — Groklaw, 10 January 2005
+Ingrid Marson. IBM slammed over patent giveaway — www.silicon.com, January 11 2005

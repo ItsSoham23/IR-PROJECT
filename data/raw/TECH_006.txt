@@ -1,0 +1,29 @@
+# DOCUMENT_ID: TECH_006
+# CATEGORY: Technology
+# TITLE: Brazilian news agency using free software for multimedia broadcasting
+# SOURCE: Wikinews
+# URL: https://en.wikinews.org/wiki/Brazilian_news_agency_using_free_software_for_multimedia_broadcasting
+# WORD_COUNT: 194
+============================================================
+Monday, May 23, 2005
+  
+The Brazilian government news agency Agencia Brasil, or Radiobras, says that it is transmitting audio and video through the internet using free software.  Proprietary software like Windows Media Player is not necessary to watch or hear the radio and TV transmissions.
+According to Diogos Gonzaga, from Agencia Brasil technology division, the agency is using the following software: Icecast for  the Ogg Vorbis codec  radio transmissions and the  Ogg Theora codec for the video ones.
+The user who wants to hear Brazilian radio transmissions can select among the following stations from Agencia Brasil: the National Radio(AM), the National Radio (FM), the National Radio from Rio de Janeiro or the National Radio from Amazon. TV transmissions can be watched by the NBR TV channel.
+Agencia Brasil started the change to free software in 2003.
+
+
+== Related news ==
+"Radiobras Brazilian news agency moved to Free Software" — Wikinews, January 10, 2005
+
+
+== Sources ==
+Lana Cristina. Radiobrás adota software livre para transmitir áudio e vídeo pela internet — Radiobras, May 22, 2005
+
+
+== External links ==
+NBr TV
+National Radio (AM)
+National Radio (FM)
+National Radio from Amazon
+National Radio from Rio

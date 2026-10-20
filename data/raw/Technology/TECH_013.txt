@@ -1,0 +1,21 @@
+# DOCUMENT_ID: TECH_013
+# CATEGORY: Technology
+# TITLE: First computer game in Piedmontese language
+# SOURCE: Wikinews
+# URL: https://en.wikinews.org/wiki/First_computer_game_in_Piedmontese_language
+# WORD_COUNT: 201
+============================================================
+Sunday, July 15, 2007
+ 
+Freecol, a free software (under the GNU General Public License) has been released in Piedmontese. This makes the game, clone of Sid Meier's Colonization the first game to have been released in this language which is only spoken by about two million people.
+Freecol, the simulation of the historical process that lead to the Declaration of Independence in North America, is the first computer game to be localized in Piedmontese language. Players of the game need to take administrative and political actions to reach its goal. 
+Version 0.7.0 in Piedmontese was released on July 13, 2007. Speakers of regional languages hope this will serve as an examplar, so that more localizations of the game in other regional languages will be released over time.
+The localization was done on Betawiki, the platform which is also used for the localization of the Mediawiki software. 
+
+
+== Sources ==
+
+Sabine Cretella. Primo gioco di computer in lingua piemontese — Positanonews, July 14, 2007 (Piedmontese)
+Sabine Cretella. Primmo juoco pe computer 'int'â lengua piemontese (in Neapolitan language) — Positanonews, July 14, 2007 (Neapolitan)
+Bèrto d'Sèra. Effect Betawiki — i-iter, July 13, 2007
+Bèrto d'Sèra. Freecol piemonteis — i-iter, July 13, 2007 (Piedmontese)

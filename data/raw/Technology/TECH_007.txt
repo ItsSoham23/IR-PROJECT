@@ -1,0 +1,19 @@
+# DOCUMENT_ID: TECH_007
+# CATEGORY: Technology
+# TITLE: Cuba to embrace free software
+# SOURCE: Wikinews
+# URL: https://en.wikinews.org/wiki/Cuba_to_embrace_free_software
+# WORD_COUNT: 151
+============================================================
+Wednesday, May 18, 2005
+ 
+
+On Tuesday, Juventud Rebelde reported that the Central Administration of Cuba is organizing a migration to free and open source software. The announcement was made during a free software workshop organized at the "Convención Internacional Informática 2005" by the director of the state office of information technology, Roberto del Puerto.
+The plan is to use the Linux operating system as a base, though the administration currently uses Microsoft Windows. The transition is planned to be slow and involves organizational changes, development and creating a legal framework. 
+The Linux user base in Cuba is around 1,500 people and has its own Linux distribution. Cuba also has some free software developers and the University of Information Science, with over 6,000 students, has committed one department for the development of programs for Linux which is a good move towards open source
+
+
+== Sources ==
+http://www.jrebelde.cubaweb.cu/2005/abril-junio/mayo-17/impulsara.html (The original article)
+http://www.theinquirer.net/?article=23300
+http://www.cubamagica.com/paginas/ev05_3.php

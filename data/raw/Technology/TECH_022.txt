@@ -1,0 +1,86 @@
+# DOCUMENT_ID: TECH_022
+# CATEGORY: Technology
+# TITLE: Gregory Kurtzer discusses plans for Rocky Linux with Wikinews as Red Hat announces moving focus away from CentOS
+# SOURCE: Wikinews
+# URL: https://en.wikinews.org/wiki/Gregory_Kurtzer_discusses_plans_for_Rocky_Linux_with_Wikinews_as_Red_Hat_announces_moving_focus_away_from_CentOS
+# WORD_COUNT: 2136
+============================================================
+Friday, December 18, 2020
+ 
+
+Last week, on December 8, US-based software company Red Hat announced plans to shift their focus away from CentOS in favour of CentOS stream.
+Started in 2004, CentOS has been a free-of-cost free/libre open source software which provided binary-code compatibility with Red Hat Enterprise Linux (RHEL) — Red Hat's GNU General Public Licensed paid operating system.  Gregory Kurtzer told Wikinews he started CAOS Linux around the time when Red Hat announced End of Life for their Red Hat Linux in favour of subscription-based Red Hat Enterprise Linux.  CAOS was succeeded by CentOS when Rocky McGaugh, a developer of CAOS rebuilt the source code of RHEL to provide a monetarily free alternative.  CentOS was absorbed into Red Hat in 2014, with Red Hat gaining the trademark rights of "CentOS".
+Red Hat also sponsors the development of the Fedora operating system.  Until now, software development took place on Fedora, which was later adopted in RHEL, which the Red Hat maintained and provided support for, for those customers who had RHEL subscription. CentOS would then follow RHEL's release cycle to provide the same features free of cost, but without the support.
+Stream was announced in September 2019, just two months after Red Hat was acquired by IBM.  CentOS Stream's development cycle had new features added to it before the features became a part of RHEL.  Stream receives more frequent updates, however, it does not follow RHEL's release cycle. 
+With CentOS Stream, developments from the community and the Red Hat employees would take place beforehand on both Fedora, and Stream as a rolling release, before those features are absorbed into RHEL.  CentOS followed the release cycle of RHEL and therefore it was a stable distribution.  Features available in CentOS were tried and tested by Fedora, and then RHEL maintainers.
+Red Hat's Chief Technical Officer Chris Wright wrote in the announcement "CentOS Stream isn't a replacement for CentOS Linux; rather, it's a natural, inevitable next step intended to fulfill the project's goal of furthering enterprise Linux innovation."  Since the announcement was made, many people expressed their anger on Internet Relay Chat (IRC), Reddit and CentOS project's mailing list. CentOS 8's End of Life (EOL) has been moved up from May 2029 to December 31, 2021, while CentOS 7 is expected to receive maintenance updates through June 2024, outliving CentOS 8.
+
+Soon after Red Hat's announcement, Kurtzer announced his intentions to develop Rocky Linux, to fill the role CentOS had been playing for so long.  Kurtzer said Rocky Linux was named after Rocky McGaugh.  "Thinking back to early CentOS days... My cofounder was Rocky McGaugh. He is no longer with us, so as a H/T [hat tip] to him, who never got to see the success that CentOS came to be, I introduce to you...Rocky Linux", Kurtzer wrote.  Wikinews discussed with Kurtzer the beginning of CentOS, and future of Rocky Linux.
+While no formal date of release has been announced for Rocky Linux, Kurtzer said they are planning to release the CentOS replacement before the end of life of CentOS 8.  Kurtzer also said Rocky Linux will run on both x86-64 and ARM-based processors, and CentOS users would be able to convert their OS to Rocky Linux just by running a single command.
+Saying Rocky Linux is for the community, Kurtzer said he "take[s] the responsibility of ensuring that all decisions are in favor of the community and the project and free from corporate control" including his own company.  Talking about the attention from the userbase Rocky Linux has received, Kurtzer said, "I have never seen an open community come together this fast and be this passionate about working together towards a common goal."
+
+
+== Interview with Gregory Kurtzer ==
+
+ Why was CentOS originally created?  What were the reasons why it was then absorbed by Red Hat?
+((Gregory Kurtzer))  CentOS was originally created because Red Hat decided to EOL (End of Life) Red Hat Linux (RHL) shortly after releasing RHL 8.  Overnight, RHL ceased to exist and Red Hat instead released Red Hat Enterprise Linux (RHEL) which was a commercial only product.  This means that the majority of RHL users were left without a "free" solution or upgrade path.
+At the time a Linux distribution that I founded called CAOS Linux was just beginning to get underway, and we too were relying on RHL as a bootstrap build environment.  One of our developers, Rocky McGaugh, quickly rebuilt the sources in RHEL to give us a stable foundation.  That was the beginning of CentOS which was released as an open source project.
+After CentOS became widely known, CentOS was separated from Caos Linux Foundation and another person took the lead.  Later, the project underwent some drama — lost developers, contributors, and a lot of support, to the point where only a couple of developers were running everything and Red Hat hired most of them.  I had no visibility of the acquisition of CentOS.
+
+((WN))  How has CentOS evolved since it became a part of Red Hat?
+((Gregory Kurtzer))  Red Hat has invested a good deal of resources into the CentOS project itself and the community has benefited from additional developers, closer ties to Red Hat's internal development team and infrastructure (including Fedora), marketing, branding, conference presence, etc.
+Red Hat has always been a tremendous supporter of Linux and open source, but that doesn't make Red Hat/IBM a good home for CentOS.
+((WN))  How will this move by Red Hat, to move focus towards Stream, affect those who relied on CentOS?
+((Gregory Kurtzer))  The focus towards Stream, while not exactly meeting the needs of enterprise use cases, wasn't the biggest problem, it was the unexpected change in the CentOS End Of Life (EOL) which moved from 2029 to 2021.  But either one, much less both together, demonstrates that the Community Enterprise Operating System is not technically "community" or "enterprise".  We have heard from many people now that this move has undermined not only trust in CentOS, but also other open source distributions of Linux which are commercially controlled.  Who is to stop them from doing something very similar?
+((WN))  Tell us about Rocky Linux.
+((Gregory Kurtzer))  Rocky Linux is a Community Enterprise Linux distribution by the community and for the community.  Our goal is to be bug-for-bug compatible with RHEL and provide a long life for enterprise needs.
+((WN))  How will Rocky Linux aim to fill the void that CentOS will leave?
+((Gregory Kurtzer))  The last time I checked, CentOS was the most utilized Linux server operating system on the Internet.  All of these users, including development teams, need stability.  Linux is free.  Myself, among many thousands of developers and companies around the world, have contributed to what makes up a Linux distribution.  While nobody has a problem with companies offering value by building a usable, supportable platform out of open source software, there needs to be a freely available version out of respect to all of the people who have made the distribution possible as well as the organizations that have contributed time and resources into Linux.  It is not owned by the Linux distribution vendor, it is packaged by them.
+Rocky [Linux] will provide a freely available, stable, enterprise-grade operating system that can be used everywhere by anyone.
+((WN))  Will Rocky Linux provide a way to migrate CentOS 7 and 8 to Rocky Linux?  How will you ensure it is a smooth transition?
+((Gregory Kurtzer))  We are not currently forking CentOS 7 because that has not changed its EOL.  If that changes, we will rebuild that as well.
+To convert a CentOS 8 system to Rocky Linux 8, you only need to run a single command:
+dnf install http://your.favorite.rocky.mirror/path/to/rocky-release*.rpm
+Because Rocky is completely compatible with both CentOS and RHEL, this single command is all you will have to do to keep your system running, patched, and supported.
+
+((WN))  Which hardwares will Rocky Linux run on?  Is the aim to provide support for all hardwares CentOS supported, or just those which Red Hat supported?
+((Gregory Kurtzer))  So far we have very active support and interest in x86-64 as well as ARM.  Nobody from IBM Power has reached out to us (yet).
+
+((WN))  Will Rocky Linux be supported for both 32-bit and 64-bit ARM processors?
+((Gregory Kurtzer))  That isn't known yet, it depends on what ARM and contributors commit too, which will surely be driven by community necessity and requests.
+((WN))  Will Rocky Linux be the same as CentOS in functionality, or will it do some things differently?
+((Gregory Kurtzer))  Bug-for-bug compatibility.
+We've already been approached by multiple people asking about Special Interest Groups (SIGs) for value adds over and above the base enterprise platform.  One of my interests, for example, can be supported here with an HPC (High Performance Computing) SIG.  Big Data, Kubernetes/Containers, and enhanced security have been among the other SIG proposals we've received.
+((WN))  What are some of the challenges that Rocky Linux currently faces?  How do you plan to tackle those?
+((Gregory Kurtzer))  Velocity of growth is the biggest challenge so far.  We are six days old and we keep hitting the invite link limits for our Slack, which now has thousands of people in it.  I've requested a sponsorship from Slack, but so far, we haven't had a very positive outcome.  We're looking into alternatives to Slack for real-time communications as well.  For durable discussion, we've had more than 100,000 views of our forums in three days, and already we're hitting limits with our hosting there, so that needs to be scaled soon as well.
+Also, we are working on FIPS certifications and STIG standards which have been a consistent request.  That means that the security and compliance team is guiding how every aspect of the infrastructure is set up to guarantee security, compliance, and trust.
+((WN))  How many developers are working on Rocky Linux?  What are the important things that require significant developer time and attention?
+((Gregory Kurtzer))  We are about 65 contributors actively driving Rocky right now, all in small task groups to do specific things.  We also have about another 250 who have volunteered and are awaiting roles, and even more asking to help drive and build the community.  We also have small to massive corporations stepping up to support us in the form of sponsorships, donations, mirrors, hardware, cloud resources, etc.
+Very careful attention will be paid to the security, trust, and compliance of what we are creating.
+I have never seen an open community come together this fast and be this passionate about working together towards a common goal.
+((WN))  Can we expect Rocky Linux to be released before CentOS 8 reaches end of life?
+((Gregory Kurtzer))  Yes.  While we haven't given any ETA on release, we already have a large percentage of the work underway and if I were to make a SWAG [Scientific wild-ass guess], it will be near the end of Q1 or beginning of Q2 2021.
+((WN))  How will the governing body of Rocky Linux function?  How can Rocky Linux ensure similar situation like this does not repeat?
+((Gregory Kurtzer))  At the moment, we have a structure similar to most organizations.  People have been empowered to make decisions and report upwards.  This may change in the future, but right now, we need leadership and I take the responsibility of ensuring that all decisions are in favor of the community and the project and free from corporate control (even from my own company).
+My commitment to the project is that Rocky will always remain in the best interest of the community and everyone who wishes to be part of the organization, with good intentions, will be welcomed.  Since day one, Rocky's coordination efforts have been completely transparent.  I invite anyone reading this to join the #rocky-coordination channel on our Slack instance. There you'll find many high-level discussions taking place with direct community involvement.
+((WN))  What are the short-term and long-term goals of Rocky Linux and how will the project ensure it stays on its path?
+((Gregory Kurtzer))  Short term: organization of technology and people.
+Mid term: general availability of Rocky Linux.
+Long term: growing the community like sponsoring SIGs.
+
+
+== Related news ==
+"Red Hat to move focus away from CentOS in favour of Stream; CentOS team discuss implications with Wikinews" — Wikinews, December 14, 2020
+
+
+== Sources ==
+
+
+== External links ==
+ The CentOS SIGs — CentOS, December 12, 2020 (date of access)
+ December 2020 Archives by thread — CentOS, December 12, 2020 (date of access)
+ Rocky Linux — Rocky Linux, December 12, 2020 (date of access)
+Brendan Conoboy. How RHEL is Made — CentOS, December 11, 2020
+ FAQ: CentOS Stream Updates — Red Hat, December 8, 2020
+Stef Walter. CentOS Stream is Continuous Delivery — CentOS, December 11, 2020
+Thomas Oulevey. Minutes for CentOS Board of Directors for 2020-11-11 — CentOS, December 11, 2020
