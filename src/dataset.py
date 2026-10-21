@@ -109,6 +109,25 @@ def prepare_100_document_corpus(
     np.save(os.path.join(output_dir, "y_train.npy"), y_train)
     np.save(os.path.join(output_dir, "y_test.npy"), y_test)
 
+    # Also save unified count matrix over all 100 documents
+    X_full = np.vstack([X_train, X_test])
+    np.save(os.path.join(output_dir, "count_matrix.npy"), X_full)
+    np.save(os.path.join(output_dir, "count_matrix_full.npy"), X_full)
+
+    # Save cleaned / tokenized documents
+    cleaned_corpus = []
+    for d in selected_100:
+        tokens = preprocessor.tokenize(d["raw_text"])
+        cleaned_corpus.append({
+            "document_id": d["document_id"],
+            "category": d["category"],
+            "split": d["split"],
+            "tokens": tokens,
+            "cleaned_text": " ".join(tokens),
+        })
+    with open(os.path.join(output_dir, "cleaned_corpus.json"), "w", encoding="utf-8") as f:
+        json.dump(cleaned_corpus, f, indent=2)
+
     with open(os.path.join(output_dir, "vocab.txt"), "w", encoding="utf-8") as f:
         for w in vocab:
             f.write(w + "\n")
