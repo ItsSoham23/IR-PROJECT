@@ -150,11 +150,4 @@ The final 20% of the project will focus on the planned stretch objectives:
 
 ---
 
-## 5. Contribution Matrix
 
-| Member | Specific Responsibilities Completed | Planned Final Tasks |
-|---|---|---|
-| **Soham Vinay Deshmukh** | Web scraping automation (`src/ingest_corpus.py`), Google Sheet metadata synchronization, SQLite schema design, dataset splitting (`src/dataset.py`). | Final report formatting, dataset release package, licensing documentation. |
-| **Anish Sai Nimmagadda** | PLSA mathematical formulation and vectorized EM engine (`src/plsa.py`), Tempered EM annealing, unit test suite (`tests/`). | Gensim LDA baseline comparison, posterior sensitivity analysis. |
-| **Romit Jain** | Hungarian alignment algorithm (`src/align.py`), folding-in inference, IR ranked retrieval evaluation (MAP, P@K, NDCG), LSI and TF-IDF baselines (`src/baselines.py`, `src/retrieval.py`). | Test-time evasion attack (EvaLDA-style folding-in perturbation), retrieval metric curves. |
-| **Goutham Mahesh** | Adversarial attack generators (`src/attack.py` for repetition and bridging), defense filters (`src/defense.py`), multi-seed experiment pipelines, bootstrap CI and plotting. | Poisoning budget sweep ($N \in [2..20]$), NPMI topic coherence evaluation. |
