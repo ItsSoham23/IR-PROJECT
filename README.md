@@ -47,11 +47,19 @@ IR-PROJECT/
 │   ├── attack.py                      # Keyword repetition & bridging poison generators
 │   ├── defense.py                     # Deduplication, outlier filtering, MAP smoothing
 │   ├── retrieval.py                   # Query folding-in, ranking, P@K, MAP, NDCG
+│   ├── evaluate.py                    # Shared PLSA/LDA evaluation
+│   ├── coherence.py                   # NPMI topic coherence
+│   ├── evasion.py                     # Test-time token perturbations
+│   ├── fold_in.py                     # Text-level folding-in helper
 │   └── baselines.py                   # LSI (TruncatedSVD), TF-IDF + KMeans
 ├── experiments/
 │   ├── stage0_20news.py               # Mini-replication on 20 Newsgroups
 │   ├── run_conditions.py              # Synthetic stress-test pipeline
-│   └── run_self_collected.py          # Full 5-seed evaluation on 100-doc self-collected corpus
+│   ├── run_self_collected.py          # Full 5-seed evaluation on 100-doc self-collected corpus
+│   ├── lda_baseline.py                # Gensim LDA vs PLSA comparison
+│   ├── poison_budget.py               # Poison-budget sensitivity sweep
+│   ├── test_time_evasion.py           # Folding-in evasion experiment
+│   └── visualize_*.py                 # Stretch-experiment plots
 ├── tests/
 │   ├── test_em_monotone.py            # Verifies monotonic non-decreasing log-likelihood
 │   ├── test_normalization.py          # Verifies proper probability distributions
@@ -115,6 +123,21 @@ python experiments/stage0_20news.py
 ```bash
 python experiments/run_self_collected.py
 ```
+
+### Run the stretch experiments
+```bash
+python experiments/lda_baseline.py
+python experiments/poison_budget.py
+python experiments/visualize_budget.py
+python experiments/test_time_evasion.py
+python experiments/visualize_evasion.py
+python experiments/visualize_coherence.py
+```
+
+The stretch scripts write JSON summaries and PNG figures under `results/`.
+They use the four existing corpus categories, so the default topic count is
+four. Main parameters are exposed as Python function arguments for
+reproducible reruns.
 
 ---
 

@@ -21,9 +21,13 @@ results/*
 !results/.gitkeep
 !results/*.json
 !results/*.png
+!results/*.model
+!results/*.npy
 data/processed/*
 !data/processed/.gitkeep
 !data/processed/splits.json
+data/raw/*.txt
+data/raw/*/*.txt
 *.sqlite
 *.sqlite3
 *.log

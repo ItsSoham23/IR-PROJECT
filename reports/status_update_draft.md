@@ -140,7 +140,29 @@ Evaluated on the 100-document curated corpus (80 train / 20 test across seeds 42
 
 ---
 
-## 4. Remaining Work & Path to Final Submission (~20%)
+## 4. Stretch Experiments
+
+The repository now includes reproducible scripts for the remaining evaluation
+work. `experiments/lda_baseline.py` trains Gensim LDA on the same fixed
+train/test splits as PLSA and reports Macro-F1, MAP, held-out perplexity, and
+top-10-word NPMI in `results/lda_summary.json`, with the paired figure in
+`results/lda_vs_plsa.png`. `experiments/poison_budget.py` sweeps 2, 5, 10, 15,
+and 20 injected documents for standard and tempered PLSA, recording
+classification, retrieval, perplexity, and coherence in
+`results/poison_budget_curve.json`. The accompanying visualizers produce
+`results/poison_budget_curve.png` and `results/coherence_curve.png`.
+
+For inference-time robustness, `experiments/test_time_evasion.py` replaces up
+to three tokens in held-out documents with high-probability target-topic words
+without retraining. Results are saved to `results/evasion_summary.json` and
+plotted in `results/evasion_curve.png`. The perturbation and folding-in logic
+is reusable through `src/evasion.py` and `src/fold_in.py`.
+
+These experiments quantify whether LDA's prior regularizes poisoning, identify
+the poison budget at which PLSA degrades, and measure test-time evasion
+separately from training-time poisoning.
+
+## 5. Remaining Work & Path to Final Submission
 
 The final 20% of the project will focus on the planned stretch objectives:
 1. **LDA Comparison via Gensim (Stretch 1):** Fit Latent Dirichlet Allocation on Conditions A, B, and C to empirically test whether a Dirichlet prior over document-topic mixtures confers natural resilience against keyword injection relative to unconstrained PLSA.
@@ -149,5 +171,4 @@ The final 20% of the project will focus on the planned stretch objectives:
 4. **Final Paper & Packaging:** Format final IEEE/ACM 2-column report, export vector figures, and pin requirements.
 
 ---
-
 

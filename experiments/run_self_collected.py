@@ -41,6 +41,7 @@ from src.metrics import (
     compute_npmi_coherence,
 )
 from src.retrieval import IRBenchmark, benchmark_resource_usage
+from src.coherence import npmi
 
 
 def bootstrap_ci(data: List[float], n_boot: int = 1000, ci: float = 0.95) -> Tuple[float, float]:
@@ -90,6 +91,8 @@ def run_self_collected_experiments(
         X_train, X_test, y_train, y_test, vocab, train_docs, test_docs = prepare_100_document_corpus(
             seed=seed, output_dir=os.path.join("data", "processed")
         )
+        with open(os.path.join("data", "processed", "cleaned_corpus.json"), encoding="utf-8") as handle:
+            corpus_tokens = [item["tokens"] for item in json.load(handle)]
 
         n_train = len(train_docs)
         n_test = len(test_docs)
@@ -117,6 +120,11 @@ def run_self_collected_experiments(
             "Accuracy": clf_a["accuracy"],
             "Purity": compute_purity(y_test, test_topics_a),
             "NMI": compute_nmi(y_test, test_topics_a),
+            "NPMI": npmi(
+                {k: [word for word, _ in words] for k, words in plsa_a.get_top_words(vocab, 10).items()},
+                corpus_tokens,
+                vocab,
+            ),
             "Perplexity": perp_a,
             "MAP": retrieval_a["MAP"],
             "P@5": retrieval_a["P@5"],
@@ -167,6 +175,11 @@ def run_self_collected_experiments(
             "Accuracy": clf_b["accuracy"],
             "Purity": compute_purity(y_test, test_topics_b),
             "NMI": compute_nmi(y_test, test_topics_b),
+            "NPMI": npmi(
+                {k: [word for word, _ in words] for k, words in plsa_b_rep.get_top_words(vocab, 10).items()},
+                corpus_tokens,
+                vocab,
+            ),
             "Perplexity": perp_b,
             "MAP": retrieval_b["MAP"],
             "P@5": retrieval_b["P@5"],
@@ -220,6 +233,11 @@ def run_self_collected_experiments(
             "Accuracy": clf_br["accuracy"],
             "Purity": compute_purity(y_test, test_topics_br),
             "NMI": compute_nmi(y_test, test_topics_br),
+            "NPMI": npmi(
+                {k: [word for word, _ in words] for k, words in plsa_b_br.get_top_words(vocab, 10).items()},
+                corpus_tokens,
+                vocab,
+            ),
             "Perplexity": perp_br,
             "MAP": retrieval_br["MAP"],
             "P@5": retrieval_br["P@5"],
@@ -265,6 +283,11 @@ def run_self_collected_experiments(
             "Accuracy": clf_c["accuracy"],
             "Purity": compute_purity(y_test, test_topics_c),
             "NMI": compute_nmi(y_test, test_topics_c),
+            "NPMI": npmi(
+                {k: [word for word, _ in words] for k, words in plsa_c.get_top_words(vocab, 10).items()},
+                corpus_tokens,
+                vocab,
+            ),
             "Perplexity": perp_c,
             "MAP": retrieval_c["MAP"],
             "P@5": retrieval_c["P@5"],
@@ -310,6 +333,11 @@ def run_self_collected_experiments(
             "Accuracy": clf_dedup["accuracy"],
             "Purity": compute_purity(y_test, test_topics_dedup),
             "NMI": compute_nmi(y_test, test_topics_dedup),
+            "NPMI": npmi(
+                {k: [word for word, _ in words] for k, words in plsa_def_dedup.get_top_words(vocab, 10).items()},
+                corpus_tokens,
+                vocab,
+            ),
             "Perplexity": perp_dedup,
             "MAP": retrieval_dedup["MAP"],
             "P@5": retrieval_dedup["P@5"],
@@ -341,6 +369,11 @@ def run_self_collected_experiments(
             "Accuracy": clf_temp["accuracy"],
             "Purity": compute_purity(y_test, test_topics_temp),
             "NMI": compute_nmi(y_test, test_topics_temp),
+            "NPMI": npmi(
+                {k: [word for word, _ in words] for k, words in plsa_temp_b.get_top_words(vocab, 10).items()},
+                corpus_tokens,
+                vocab,
+            ),
             "Perplexity": perp_temp,
             "MAP": retrieval_temp["MAP"],
             "P@5": retrieval_temp["P@5"],
@@ -413,6 +446,7 @@ def run_self_collected_experiments(
         purities = [r["Purity"] for r in runs]
         maps = [r["MAP"] for r in runs]
         perps = [r["Perplexity"] for r in runs if not np.isnan(r["Perplexity"])]
+        npmis = [r["NPMI"] for r in runs if "NPMI" in r]
 
         f1_mean, f1_std = np.mean(f1s), np.std(f1s)
         f1_ci_l, f1_ci_u = bootstrap_ci(f1s)
@@ -435,6 +469,8 @@ def run_self_collected_experiments(
             "MAP_std": float(map_std),
             "Perplexity_mean": float(np.mean(perps)) if perps else None,
             "Perplexity_std": float(np.std(perps)) if perps else None,
+            "NPMI_mean": float(np.mean(npmis)) if npmis else None,
+            "NPMI_std": float(np.std(npmis)) if npmis else None,
             "runs": runs,
         }
     print("=" * 105)
