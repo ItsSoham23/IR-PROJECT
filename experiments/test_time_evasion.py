@@ -14,6 +14,9 @@ from src.metrics import compute_classification_metrics
 from src.plsa import PLSA
 from src.preprocess import TextPreprocessor
 
+MODEL_MAX_ITER = 1000
+MODEL_RESTARTS = 5
+
 
 def run_evasion(
     swap_counts=(0, 1, 2, 3),
@@ -24,7 +27,9 @@ def run_evasion(
     preprocessor = TextPreprocessor(min_df=2, max_df_ratio=0.85)
     preprocessor.vocab_ = vocab
     preprocessor.word_to_idx_ = {word: index for index, word in enumerate(vocab)}
-    model = PLSA(n_topics=4, max_iter=50, random_state=seed).fit(X_train)
+    model = PLSA(
+        n_topics=4, max_iter=MODEL_MAX_ITER, n_restarts=MODEL_RESTARTS, random_state=seed
+    ).fit(X_train)
     aligner = TopicAligner(n_topics=4).fit(np.argmax(model.p_z_d, axis=1), y_train)
     target_topic = aligner.class_to_topic_[0]
     target_words = [word for word, _ in model.get_top_words(vocab, 50)[target_topic]]

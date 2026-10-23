@@ -43,6 +43,9 @@ from src.metrics import (
 from src.retrieval import IRBenchmark, benchmark_resource_usage
 from src.coherence import npmi
 
+MODEL_MAX_ITER = 1000
+MODEL_RESTARTS = 5
+
 
 def bootstrap_ci(data: List[float], n_boot: int = 1000, ci: float = 0.95) -> Tuple[float, float]:
     """Calculate non-parametric bootstrap confidence interval."""
@@ -101,7 +104,7 @@ def run_self_collected_experiments(
         # -------------------------------------------------------------------
         # 1. Condition A (Clean Baseline PLSA)
         # -------------------------------------------------------------------
-        plsa_a = PLSA(n_topics=n_topics, max_iter=50, tol=1e-5, beta=1.0, random_state=seed)
+        plsa_a = PLSA(n_topics=n_topics, max_iter=MODEL_MAX_ITER, tol=1e-6, n_restarts=MODEL_RESTARTS, beta=1.0, random_state=seed)
         _, fit_time_a, mem_mb_a = benchmark_resource_usage(plsa_a.fit, X_train)
 
         train_topics_a = np.argmax(plsa_a.p_z_d, axis=1)
@@ -130,6 +133,8 @@ def run_self_collected_experiments(
             "P@5": retrieval_a["P@5"],
             "Fit Time (s)": fit_time_a,
             "Peak Mem (MB)": mem_mb_a,
+            "EM iterations": plsa_a.n_iter_,
+            "EM converged": plsa_a.converged_,
         })
 
         if sample_top_words is None:
@@ -155,7 +160,7 @@ def run_self_collected_experiments(
         X_poison_rep = preprocessor.transform(poison_docs_rep)
         X_train_b_rep = np.vstack([X_train, X_poison_rep])
 
-        plsa_b_rep = PLSA(n_topics=n_topics, max_iter=50, tol=1e-5, beta=1.0, random_state=seed)
+        plsa_b_rep = PLSA(n_topics=n_topics, max_iter=MODEL_MAX_ITER, tol=1e-6, n_restarts=MODEL_RESTARTS, beta=1.0, random_state=seed)
         _, fit_time_b, mem_mb_b = benchmark_resource_usage(plsa_b_rep.fit, X_train_b_rep)
 
         # Align with clean training documents only
@@ -185,6 +190,8 @@ def run_self_collected_experiments(
             "P@5": retrieval_b["P@5"],
             "Fit Time (s)": fit_time_b,
             "Peak Mem (MB)": mem_mb_b,
+            "EM iterations": plsa_b_rep.n_iter_,
+            "EM converged": plsa_b_rep.converged_,
         })
 
         # Attack potency
@@ -214,8 +221,8 @@ def run_self_collected_experiments(
         X_poison_br = preprocessor.transform(poison_docs_br)
         X_train_b_br = np.vstack([X_train, X_poison_br])
 
-        plsa_b_br = PLSA(n_topics=n_topics, max_iter=50, tol=1e-5, beta=1.0, random_state=seed)
-        plsa_b_br.fit(X_train_b_br)
+        plsa_b_br = PLSA(n_topics=n_topics, max_iter=MODEL_MAX_ITER, tol=1e-6, n_restarts=MODEL_RESTARTS, beta=1.0, random_state=seed)
+        _, fit_time_br, mem_mb_br = benchmark_resource_usage(plsa_b_br.fit, X_train_b_br)
 
         clean_train_topics_br = np.argmax(plsa_b_br.p_z_d[:n_train], axis=1)
         aligner_b_br = TopicAligner(n_topics=n_topics).fit(clean_train_topics_br, y_train)
@@ -241,8 +248,10 @@ def run_self_collected_experiments(
             "Perplexity": perp_br,
             "MAP": retrieval_br["MAP"],
             "P@5": retrieval_br["P@5"],
-            "Fit Time (s)": fit_time_b,
-            "Peak Mem (MB)": mem_mb_b,
+            "Fit Time (s)": fit_time_br,
+            "Peak Mem (MB)": mem_mb_br,
+            "EM iterations": plsa_b_br.n_iter_,
+            "EM converged": plsa_b_br.converged_,
         })
 
         potency_br = compute_attack_potency(
@@ -264,8 +273,8 @@ def run_self_collected_experiments(
         X_control = preprocessor.transform(control_docs)
         X_train_c = np.vstack([X_train, X_control])
 
-        plsa_c = PLSA(n_topics=n_topics, max_iter=50, tol=1e-5, beta=1.0, random_state=seed)
-        plsa_c.fit(X_train_c)
+        plsa_c = PLSA(n_topics=n_topics, max_iter=MODEL_MAX_ITER, tol=1e-6, n_restarts=MODEL_RESTARTS, beta=1.0, random_state=seed)
+        _, fit_time_c, mem_mb_c = benchmark_resource_usage(plsa_c.fit, X_train_c)
 
         clean_train_topics_c = np.argmax(plsa_c.p_z_d[:n_train], axis=1)
         aligner_c = TopicAligner(n_topics=n_topics).fit(clean_train_topics_c, y_train)
@@ -291,8 +300,10 @@ def run_self_collected_experiments(
             "Perplexity": perp_c,
             "MAP": retrieval_c["MAP"],
             "P@5": retrieval_c["P@5"],
-            "Fit Time (s)": fit_time_b,
-            "Peak Mem (MB)": mem_mb_b,
+            "Fit Time (s)": fit_time_c,
+            "Peak Mem (MB)": mem_mb_c,
+            "EM iterations": plsa_c.n_iter_,
+            "EM converged": plsa_c.converged_,
         })
 
         potency_c = compute_attack_potency(
@@ -310,9 +321,11 @@ def run_self_collected_experiments(
         # -------------------------------------------------------------------
         # 5. Defense: Deduplication Filter on Condition B
         # -------------------------------------------------------------------
-        X_deduped, kept_ids = DefenseFilter.deduplicate_documents(X_train_b_rep, threshold=0.75)
-        plsa_def_dedup = PLSA(n_topics=n_topics, max_iter=50, tol=1e-5, beta=1.0, random_state=seed)
-        plsa_def_dedup.fit(X_deduped)
+        X_deduped, kept_ids = DefenseFilter.deduplicate_documents(
+            X_train_b_rep, threshold=0.75, protected_indices=list(range(n_train))
+        )
+        plsa_def_dedup = PLSA(n_topics=n_topics, max_iter=MODEL_MAX_ITER, tol=1e-6, n_restarts=MODEL_RESTARTS, beta=1.0, random_state=seed)
+        _, fit_time_dedup, mem_mb_dedup = benchmark_resource_usage(plsa_def_dedup.fit, X_deduped)
 
         clean_kept = [i for i in kept_ids if i < n_train]
         clean_topics_dedup = np.argmax(plsa_def_dedup.p_z_d[:len(clean_kept)], axis=1)
@@ -341,15 +354,17 @@ def run_self_collected_experiments(
             "Perplexity": perp_dedup,
             "MAP": retrieval_dedup["MAP"],
             "P@5": retrieval_dedup["P@5"],
-            "Fit Time (s)": fit_time_b,
-            "Peak Mem (MB)": mem_mb_b,
+            "Fit Time (s)": fit_time_dedup,
+            "Peak Mem (MB)": mem_mb_dedup,
+            "EM iterations": plsa_def_dedup.n_iter_,
+            "EM converged": plsa_def_dedup.converged_,
         })
 
         # -------------------------------------------------------------------
         # 6. Defense: Tempered EM on Condition B (beta=0.85)
         # -------------------------------------------------------------------
-        plsa_temp_b = PLSA(n_topics=n_topics, max_iter=50, tol=1e-5, beta=0.85, random_state=seed)
-        plsa_temp_b.fit(X_train_b_rep)
+        plsa_temp_b = PLSA(n_topics=n_topics, max_iter=MODEL_MAX_ITER, tol=1e-6, n_restarts=MODEL_RESTARTS, beta=0.85, random_state=seed)
+        _, fit_time_temp, mem_mb_temp = benchmark_resource_usage(plsa_temp_b.fit, X_train_b_rep)
 
         clean_topics_temp = np.argmax(plsa_temp_b.p_z_d[:n_train], axis=1)
         aligner_temp = TopicAligner(n_topics=n_topics).fit(clean_topics_temp, y_train)
@@ -377,14 +392,17 @@ def run_self_collected_experiments(
             "Perplexity": perp_temp,
             "MAP": retrieval_temp["MAP"],
             "P@5": retrieval_temp["P@5"],
-            "Fit Time (s)": fit_time_b,
-            "Peak Mem (MB)": mem_mb_b,
+            "Fit Time (s)": fit_time_temp,
+            "Peak Mem (MB)": mem_mb_temp,
+            "EM iterations": plsa_temp_b.n_iter_,
+            "EM converged": plsa_temp_b.converged_,
         })
 
         # -------------------------------------------------------------------
         # 7. Baseline: LSI
         # -------------------------------------------------------------------
-        lsi = LSIBaseline(n_components=n_topics, random_state=seed).fit(X_train, y_train)
+        lsi = LSIBaseline(n_components=n_topics, random_state=seed)
+        _, fit_time_lsi, mem_mb_lsi = benchmark_resource_usage(lsi.fit, X_train, y_train)
         lsi_preds = lsi.predict(X_test)
         clf_lsi = compute_classification_metrics(y_test, lsi_preds)
 
@@ -400,14 +418,15 @@ def run_self_collected_experiments(
             "Perplexity": float("nan"),
             "MAP": retrieval_lsi["MAP"],
             "P@5": retrieval_lsi["P@5"],
-            "Fit Time (s)": 0.05,
-            "Peak Mem (MB)": 0.5,
+            "Fit Time (s)": fit_time_lsi,
+            "Peak Mem (MB)": mem_mb_lsi,
         })
 
         # -------------------------------------------------------------------
         # 8. Baseline: TF-IDF + KMeans
         # -------------------------------------------------------------------
-        tfidf_bm = TFIDFBaseline(n_clusters=n_topics, random_state=seed).fit(X_train, y_train)
+        tfidf_bm = TFIDFBaseline(n_clusters=n_topics, random_state=seed)
+        _, fit_time_tfidf, mem_mb_tfidf = benchmark_resource_usage(tfidf_bm.fit, X_train, y_train)
         tfidf_preds = tfidf_bm.predict(X_test)
         clf_tfidf = compute_classification_metrics(y_test, tfidf_preds)
 
@@ -423,8 +442,8 @@ def run_self_collected_experiments(
             "Perplexity": float("nan"),
             "MAP": retrieval_tfidf["MAP"],
             "P@5": retrieval_tfidf["P@5"],
-            "Fit Time (s)": 0.04,
-            "Peak Mem (MB)": 0.5,
+            "Fit Time (s)": fit_time_tfidf,
+            "Peak Mem (MB)": mem_mb_tfidf,
         })
 
     # =======================================================================

@@ -57,12 +57,53 @@ class TextPreprocessor:
 
     def tokenize(self, text: str) -> List[str]:
         """Convert raw text to lowercased tokens filtering punctuation and stopwords."""
+        text = self.clean_text(text)
         tokens = self.token_pattern.findall(text.lower())
         return [
             t
             for t in tokens
             if len(t) >= self.min_word_len and t not in self.stopwords
         ]
+
+    @staticmethod
+    def clean_text(text: str) -> str:
+        """Remove scraper metadata and repeated BITS navigation boilerplate."""
+        lines = [line.strip() for line in text.splitlines()]
+        if "Upload Screenshot" in lines:
+            lines = lines[lines.index("Upload Screenshot") + 1 :]
+        if "Latest news" in lines:
+            lines = lines[: lines.index("Latest news")]
+
+        boilerplate = {
+            "Integrated First Degree",
+            "Higher Degree",
+            "Doctoral Programmes",
+            "Dubai Campus",
+            "Give us your feedback",
+            "Upload Screenshot",
+            "Keep Exploring",
+            "Campus",
+            "University Home",
+            "K K Birla Goa",
+            "Pilani",
+            "Hyderabad",
+            "Dubai",
+            "BITSoM, Mumbai",
+            "BITSLAW, Mumbai",
+            "Academics",
+            "Admission",
+            "Research & Innovation",
+            "International Admissions",
+            "BITS Pilani Digital",
+        }
+        cleaned = []
+        seen = set()
+        for line in lines:
+            if not line or line in boilerplate or line in seen:
+                continue
+            seen.add(line)
+            cleaned.append(line)
+        return "\n".join(cleaned)
 
     def fit(self, raw_documents: List[str]) -> "TextPreprocessor":
         """

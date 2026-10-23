@@ -36,6 +36,9 @@ from src.metrics import (
     compute_npmi_coherence,
 )
 from src.coherence import npmi
+
+PLSA_MAX_ITER = 1000
+PLSA_RESTARTS = 5
 from src.retrieval import IRBenchmark
 
 
@@ -169,7 +172,14 @@ def run_lda_experiments(
             })
 
             # ---- PLSA (same data) ----
-            plsa = PLSA(n_topics=n_topics, max_iter=50, tol=1e-5, beta=1.0, random_state=seed)
+            plsa = PLSA(
+                n_topics=n_topics,
+                max_iter=PLSA_MAX_ITER,
+                tol=1e-6,
+                n_restarts=PLSA_RESTARTS,
+                beta=1.0,
+                random_state=seed,
+            )
             plsa.fit(X_tr)
             pz_train_p = plsa.p_z_d
             pz_test_p  = plsa.transform(X_test)
@@ -203,7 +213,13 @@ def run_lda_experiments(
                        "LDA – Cond A (Clean)", "PLSA – Cond A (Clean)")
 
         # ── extract target / confuser keywords for poisoning ───────
-        plsa_a = PLSA(n_topics=n_topics, max_iter=50, tol=1e-5, random_state=seed)
+        plsa_a = PLSA(
+            n_topics=n_topics,
+            max_iter=PLSA_MAX_ITER,
+            tol=1e-6,
+            n_restarts=PLSA_RESTARTS,
+            random_state=seed,
+        )
         plsa_a.fit(X_train)
         train_topics_a = np.argmax(plsa_a.p_z_d, axis=1)
         aligner_a = TopicAligner(n_topics=n_topics).fit(train_topics_a, y_train)

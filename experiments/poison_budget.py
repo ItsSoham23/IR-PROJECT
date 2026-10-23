@@ -16,6 +16,9 @@ from src.plsa import PLSA
 from src.preprocess import TextPreprocessor
 from src.retrieval import IRBenchmark
 
+MODEL_MAX_ITER = 1000
+MODEL_RESTARTS = 5
+
 
 def _evaluate(model, X_test, y_test, y_train, clean_count, vocab, corpus_tokens):
     train_topics = np.argmax(model.p_z_d[:clean_count], axis=1)
@@ -48,7 +51,9 @@ def run_poison_budget(
         cleaned = json.load(handle)
     corpus_tokens = [item["tokens"] for item in cleaned]
 
-    clean_model = PLSA(n_topics=4, max_iter=50, random_state=seed).fit(X_train)
+    clean_model = PLSA(
+        n_topics=4, max_iter=MODEL_MAX_ITER, n_restarts=MODEL_RESTARTS, random_state=seed
+    ).fit(X_train)
     aligner = TopicAligner(n_topics=4).fit(np.argmax(clean_model.p_z_d, axis=1), y_train)
     target_words = [word for word, _ in clean_model.get_top_words(vocab, 20)[aligner.class_to_topic_[0]]]
     generator = AdversarialPoisonGenerator(vocab, random_state=seed)
@@ -59,7 +64,13 @@ def run_poison_budget(
         X_condition = np.vstack([X_train, X_poison])
         record = {"poison_budget": budget}
         for name, beta in (("plsa", 1.0), ("plsa_tempered", 0.85)):
-            model = PLSA(n_topics=4, max_iter=50, beta=beta, random_state=seed).fit(X_condition)
+            model = PLSA(
+                n_topics=4,
+                max_iter=MODEL_MAX_ITER,
+                n_restarts=MODEL_RESTARTS,
+                beta=beta,
+                random_state=seed,
+            ).fit(X_condition)
             record[name] = _evaluate(
                 model, X_test, y_test, y_train, len(X_train), vocab, corpus_tokens
             )

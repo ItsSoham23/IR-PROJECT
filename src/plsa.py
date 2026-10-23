@@ -28,7 +28,7 @@ class PLSA:
     def __init__(
         self,
         n_topics: int = 4,
-        max_iter: int = 100,
+        max_iter: int = 1000,
         tol: float = 1e-5,
         beta: float = 1.0,
         smoothing: float = 1e-12,

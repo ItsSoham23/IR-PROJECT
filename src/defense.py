@@ -5,7 +5,7 @@ Defense mechanisms against adversarial topic poisoning:
 3. MAP (Maximum A Posteriori) Dirichlet pseudo-count smoothing.
 """
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -19,6 +19,7 @@ class DefenseFilter:
     def deduplicate_documents(
         X: np.ndarray,
         threshold: float = 0.85,
+        protected_indices: Optional[List[int]] = None,
     ) -> Tuple[np.ndarray, List[int]]:
         """
         Detects and filters out near-duplicate documents with cosine similarity > threshold.
@@ -35,19 +36,26 @@ class DefenseFilter:
 
         sim_matrix = np.dot(X_norm, X_norm.T)
 
-        kept_indices = []
+        protected = set(protected_indices or [])
+        kept_indices = sorted(protected)
         dropped_indices = set()
 
         for i in range(D):
+            if i in protected:
+                continue
             if i in dropped_indices:
+                continue
+            if protected and np.any(sim_matrix[i, list(protected)] > threshold):
+                dropped_indices.add(i)
                 continue
             kept_indices.append(i)
             # Find duplicate neighbors
             dupes = np.where(sim_matrix[i] > threshold)[0]
             for d in dupes:
-                if d != i:
+                if d != i and d not in protected:
                     dropped_indices.add(d)
 
+        kept_indices.sort()
         return X[kept_indices], kept_indices
 
     @staticmethod

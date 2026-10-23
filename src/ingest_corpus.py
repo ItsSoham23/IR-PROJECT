@@ -121,17 +121,24 @@ def fetch_bits_text(url: str) -> str:
 
     soup = BeautifulSoup(html, "html.parser")
 
-    # Remove script, style, navigation, footer elements
+    # Remove non-content elements before selecting the article container.
     for tag in soup(["script", "style", "nav", "header", "footer", "iframe", "noscript"]):
         tag.decompose()
 
-    # Look for main content container
+    for tag in soup.find_all(True):
+        classes = " ".join(tag.get("class", []))
+        identity = f"{tag.get('id', '')} {classes}".lower()
+        if any(term in identity for term in ("menu", "navbar", "sidebar", "breadcrumb", "footer", "header")):
+            tag.decompose()
+
+    # Prefer an article-like node; falling back to <main> or <body> is needed
+    # for older BITS pages with no semantic content container.
     main_node = (
-        soup.find("main")
-        or soup.find("article")
+        soup.find("article")
         or soup.find("div", class_="entry-content")
         or soup.find("div", class_="content")
         or soup.find("div", id="content")
+        or soup.find("main")
     )
     if not main_node:
         main_node = soup.find("body")
@@ -142,7 +149,11 @@ def fetch_bits_text(url: str) -> str:
         if len(txt) > 10:
             lines.append(txt)
 
-    full_text = "\n\n".join(lines)
+    full_text = "\n\n".join(dict.fromkeys(lines))
+    if "Upload Screenshot" in full_text:
+        full_text = full_text.split("Upload Screenshot", 1)[1]
+    if "Latest news" in full_text:
+        full_text = full_text.split("Latest news", 1)[0]
     if not full_text.strip():
         full_text = main_node.get_text(separator="\n", strip=True)
 

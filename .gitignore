@@ -22,6 +22,7 @@ results/*
 !results/*.json
 !results/*.png
 !results/*.model
+!results/*.model.*
 !results/*.npy
 data/processed/*
 !data/processed/.gitkeep

@@ -143,16 +143,26 @@ reproducible reruns.
 
 ## 6. Experimental Results Summary
 
+### Reproducibility revision
+
+The current protocol removes BITS navigation boilerplate before tokenization,
+uses deterministic five-restart PLSA with a 1000-iteration ceiling and
+`tol=1e-6`, protects all real training documents during poison deduplication,
+and measures every model's fit time and peak memory at runtime. The attack
+comparison must be interpreted against the random-control condition and the
+five-seed confidence intervals; a poisoned score is not evidence of attack
+potency unless it separates from that control.
+
 ### Self-Collected Corpus (Mean ± Std & 95% Bootstrap CI over 5 Seeds)
 
 | Method / Condition | Classification Macro-F1 [95% CI] | Purity | Retrieval MAP | Held-out Perplexity |
 |---|:---:|:---:|:---:|:---:|
-| **Condition A (Clean Baseline)** | **0.717** [0.644, 0.799] | **0.770 ± 0.051** | 0.663 ± 0.026 | 421.8 ± 12.3 |
-| **Condition B (Poison - Repetition)** | 0.683 [0.642, 0.740] | 0.740 ± 0.037 | 0.663 ± 0.049 | 420.7 ± 8.1 |
-| **Condition B (Poison - Bridging)** | **0.661** [0.557, 0.769] | 0.750 ± 0.055 | 0.658 ± 0.059 | 422.6 ± 7.9 |
-| **Condition C (Random Control)** | 0.650 [0.619, 0.691] | 0.730 ± 0.024 | 0.664 ± 0.045 | 422.1 ± 9.5 |
-| **Defense: Deduplication (on B)** | **0.791** [0.722, 0.860] | **0.800 ± 0.071** | 0.530 ± 0.085 | 1518.8 ± 198.1 |
-| **Defense: Tempered EM (on B)** | 0.642 [0.562, 0.746] | 0.760 ± 0.049 | **0.723 ± 0.048** | **416.5 ± 12.1** |
+| **Condition A (Clean Baseline)** | **0.849** [0.681, 0.949] | 0.890 ± 0.097 | 0.782 ± 0.074 | 743.5 ± 21.5 |
+| **Condition B (Poison - Repetition)** | 0.927 [0.894, 0.969] | 0.930 ± 0.040 | 0.835 ± 0.060 | 734.7 ± 38.0 |
+| **Condition B (Poison - Bridging)** | 0.839 [0.746, 0.909] | 0.860 ± 0.066 | 0.765 ± 0.043 | 759.8 ± 16.0 |
+| **Condition C (Random Control)** | 0.939 [0.908, 0.970] | 0.940 ± 0.037 | 0.838 ± 0.051 | 737.2 ± 32.0 |
+| **Defense: Deduplication (on B)** | 0.856 [0.780, 0.931] | 0.860 ± 0.086 | 0.800 ± 0.049 | 735.9 ± 37.7 |
+| **Defense: Tempered EM (on B)** | **0.949** [0.917, 0.980] | **0.950 ± 0.032** | **0.919 ± 0.019** | **714.7 ± 27.6** |
 | *Baseline: LSI* | 0.644 [0.628, 0.659] | 0.720 ± 0.024 | **0.906 ± 0.024** | N/A |
 | *Baseline: TF-IDF + KMeans* | 0.816 [0.674, 0.950] | 0.830 ± 0.144 | 0.782 ± 0.015 | N/A |
 
