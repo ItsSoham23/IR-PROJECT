@@ -5,6 +5,7 @@ Run from any directory with:
 """
 
 from pathlib import Path
+import shutil
 import sys
 
 import numpy as np
@@ -29,10 +30,14 @@ def main() -> None:
     print("=" * 68)
     print("Preparing the included local corpus...")
 
+    demo_output = ROOT / "data" / "demo_processed"
+    demo_output.mkdir(parents=True, exist_ok=True)
+    demo_db = demo_output / "corpus.sqlite"
+    shutil.copy2(ROOT / "data" / "corpus.sqlite", demo_db)
     X_train, X_test, y_train, y_test, vocab, _, _ = prepare_100_document_corpus(
         seed=42,
-        db_path=str(ROOT / "data" / "corpus.sqlite"),
-        output_dir=str(ROOT / "data" / "demo_processed"),
+        db_path=str(demo_db),
+        output_dir=str(demo_output),
     )
 
     print(f"Training documents: {len(X_train)}")
