@@ -111,9 +111,10 @@ All **9 tests pass**:
 
 ### Quick offline live demo
 
-Use the included corpus for a short demonstration. This trains one small
-four-topic PLSA model, evaluates held-out documents, and prints the learned
-top words:
+Use the included corpus for a short demonstration. This runs the clean
+baseline, keyword-repetition poisoning, bridging poisoning, random-control
+condition, deduplication defense, and tempered-EM defense. It also evaluates
+held-out documents and prints the learned top words:
 
 ```bash
 # From the repository root, after activating the virtual environment:
