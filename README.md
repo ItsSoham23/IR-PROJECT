@@ -97,9 +97,9 @@ pip install -r requirements.txt
 ## 4. Running the Verification Suite
 
 ```bash
-pytest -v tests/
+python -m pytest -v tests/
 ```
-All **7 tests pass**:
+All **9 tests pass**:
 - [x] Monotonic training log-likelihood across EM iterations.
 - [x] Proper normalization of $P(z|d,w)$, $P(w|z)$, $P(d|z)$, and $P(z)$.
 - [x] Accurate topic recovery on synthetic topic mixture matrices ($\ge 0.85$ Macro-F1).
@@ -108,6 +108,20 @@ All **7 tests pass**:
 ---
 
 ## 5. Running Experiments
+
+### Quick offline live demo
+
+Use the included corpus for a short demonstration. This trains one small
+four-topic PLSA model, evaluates held-out documents, and prints the learned
+top words:
+
+```bash
+# From the repository root, after activating the virtual environment:
+python demo.py
+```
+
+The demo is offline and normally finishes in under a minute. It does not
+download the 20 Newsgroups dataset or run the longer five-seed experiments.
 
 ### Ingest Corpus from Google Sheets
 ```bash
