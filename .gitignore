@@ -27,10 +27,13 @@ results/*
 data/processed/*
 !data/processed/.gitkeep
 !data/processed/splits.json
+data/demo_processed/*
+!data/demo_processed/.gitkeep
 data/raw/*.txt
 data/raw/*/*.txt
 *.sqlite
 *.sqlite3
+!data/corpus.sqlite
 *.log
 
 # OS & Editor

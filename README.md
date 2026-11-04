@@ -123,6 +123,8 @@ python demo.py
 
 The demo is offline and normally finishes in under a minute. It does not
 download the 20 Newsgroups dataset or run the longer five-seed experiments.
+It rebuilds its seed-42 artifacts in `data/demo_processed/`, keeping them
+separate from experiment outputs.
 
 ### Ingest Corpus from Google Sheets
 ```bash

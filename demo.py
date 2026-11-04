@@ -29,23 +29,11 @@ def main() -> None:
     print("=" * 68)
     print("Preparing the included local corpus...")
 
-    processed = ROOT / "data" / "processed"
-    artifacts = [
-        processed / name
-        for name in ("X_train.npy", "X_test.npy", "y_train.npy", "y_test.npy", "vocab.txt")
-    ]
-    if all(path.exists() for path in artifacts):
-        X_train = np.load(processed / "X_train.npy")
-        X_test = np.load(processed / "X_test.npy")
-        y_train = np.load(processed / "y_train.npy")
-        y_test = np.load(processed / "y_test.npy")
-        vocab = (processed / "vocab.txt").read_text(encoding="utf-8").splitlines()
-    else:
-        X_train, X_test, y_train, y_test, vocab, _, _ = prepare_100_document_corpus(
-            seed=42,
-            db_path=str(ROOT / "data" / "corpus.sqlite"),
-            output_dir=str(processed),
-        )
+    X_train, X_test, y_train, y_test, vocab, _, _ = prepare_100_document_corpus(
+        seed=42,
+        db_path=str(ROOT / "data" / "corpus.sqlite"),
+        output_dir=str(ROOT / "data" / "demo_processed"),
+    )
 
     print(f"Training documents: {len(X_train)}")
     print(f"Held-out documents: {len(X_test)}")
