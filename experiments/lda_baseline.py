@@ -1,9 +1,9 @@
 """
 Step 1 – PLSA vs. LDA (Gensim) Baseline Comparison.
 
-Trains Gensim LDA on the same 256-doc training split under all three
+Trains Gensim LDA on the same 204-doc training split under all three
 adversarial conditions (A – clean, B – bridging & repeat, C – random control),
-evaluates on the 64-doc held‑out test set, and compares results against the
+evaluates on the 52-doc held‑out test set, and compares results against the
 previously computed PLSA metrics.
 
 Usage

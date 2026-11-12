@@ -1,15 +1,15 @@
 """
 Full Experimental Pipeline and Adversarial Stress Test on Self-Collected Corpus.
 
-Dataset: 320 documents across 4 categories ('Campus', 'Politics', 'Sports', 'Technology')
-- 256 training documents (64 per category)
-- 64 test documents (16 per category)
+Dataset: 256 selected documents from 320 candidates across 4 categories ('Campus', 'Politics', 'Sports', 'Technology')
+- 204 training documents (51 per category)
+- 52 test documents (13 per category)
 
 Conditions:
-- Condition A: Clean Baseline (256 docs)
-- Condition B_repeat: 256 clean + 10 keyword repetition poison documents targeting Category 0
-- Condition B_bridge: 256 clean + 10 bridging poison documents (Category 0 + Category 1)
-- Condition C: 256 clean + 10 random vocabulary control documents
+- Condition A: Clean Baseline (204 docs)
+- Condition B_repeat: 204 clean + 10 keyword repetition poison documents targeting Category 0
+- Condition B_bridge: 204 clean + 10 bridging poison documents (Category 0 + Category 1)
+- Condition C: 204 clean + 10 random vocabulary control documents
 - Defenses on B: Deduplication filtering, Tempered EM (beta=0.85)
 
 Multi-seed evaluation across 5 seeds with Bootstrap 95% Confidence Intervals,
@@ -66,7 +66,7 @@ def run_self_collected_experiments(
 ):
     os.makedirs(output_dir, exist_ok=True)
     print("=" * 85)
-    print("EXPERIMENTS ON SELF-COLLECTED CORPUS (320 DOCS, 4 CATEGORIES)")
+    print("EXPERIMENTS ON SELF-COLLECTED CORPUS (256 SELECTED DOCS, 4 CATEGORIES)")
     print("=" * 85)
 
     condition_names = [

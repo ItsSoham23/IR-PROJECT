@@ -26,14 +26,14 @@ def corpus(tmp_path, monkeypatch):
     return db, tmp_path / "processed"
 
 
-def test_all_320_and_train_only_vocabulary(corpus):
+def test_256_selected_and_train_only_vocabulary(corpus):
     db, output = corpus
     first = prepare_document_corpus(db_path=db, output_dir=output)
     X_train, X_test, y_train, y_test, vocab, train, test = first
-    assert X_train.shape[0] == 256 and X_test.shape[0] == 64
-    assert set(Counter(d["category"] for d in train).values()) == {64}
-    assert set(Counter(d["category"] for d in test).values()) == {16}
-    assert len({d["document_id"] for d in train + test}) == 320
+    assert X_train.shape[0] == 204 and X_test.shape[0] == 52
+    assert set(Counter(d["category"] for d in train).values()) == {51}
+    assert set(Counter(d["category"] for d in test).values()) == {13}
+    assert len({d["document_id"] for d in train + test}) == 256
     manifest = json.loads((output / "splits.json").read_text())
     cleaned = json.loads((output / "cleaned_corpus.json").read_text())
     assert [d["document_id"] for d in cleaned] == (
@@ -44,7 +44,7 @@ def test_all_320_and_train_only_vocabulary(corpus):
     # Put an otherwise eligible token in all held-out documents, and nowhere in train.
     with sqlite3.connect(db) as conn:
         for doc in test:
-            text = "testexclusive " + doc["raw_text"]
+            text = doc["raw_text"].replace("meaningful", "testexclusive")
             conn.execute("UPDATE documents SET raw_text=?, text_hash=?, word_count=? WHERE document_id=?",
                          (text, ingest.text_hash(text), len(text.split()), doc["document_id"]))
     second = prepare_document_corpus(db_path=db, output_dir=output)
@@ -122,5 +122,5 @@ def test_experiment_entry_points_use_new_corpus(corpus, tmp_path, monkeypatch):
     for filename in ("self_collected_dataset_seed_42.json", "lda_dataset_seed_42.json",
                      "poison_budget_curve.json.dataset.json", "evasion_summary.json.dataset.json"):
         manifest = json.loads((tmp_path / "results" / "dataset_320" / filename).read_text())
-        assert manifest["n_train"] == 256 and manifest["n_test"] == 64
+        assert manifest["n_train"] == 204 and manifest["n_test"] == 52
         assert manifest["length_normalization"]["max_words"] > 0

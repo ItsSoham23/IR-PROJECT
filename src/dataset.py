@@ -12,10 +12,11 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 from src.preprocess import TextPreprocessor
-from src.ingest_corpus import metadata_hash, text_hash, validate_metadata
+from src.ingest_corpus import metadata_hash, text_hash, validate_metadata, INGESTION_STATE_VERSION
 from src.source_extract import EXTRACTION_VERSION, validate_extraction
+from src.corpus_policy import (DEFAULT_CATEGORIES, TARGET_PER_CATEGORY, TRAIN_PER_CATEGORY,
+                               SELECTION_POLICY, select_candidates)
 
-DEFAULT_CATEGORIES = ("Campus", "Politics", "Sports", "Technology")
 DEFAULT_LENGTH_PERCENTILE = 90
 _CAMPUS_FRONT_MATTER = re.compile(
     r"^(?:editorial|from\s+the\s+editor|(?:table\s+of\s+)?contents|"
@@ -76,14 +77,16 @@ def choose_length_limit(train_docs, percentile=DEFAULT_LENGTH_PERCENTILE):
 def save_experiment_manifest(output_path, processed_dir="data/processed"):
     """Attach the actual split, source fingerprint and length policy to results."""
     manifest = json.loads(Path(processed_dir, "splits.json").read_text(encoding="utf-8"))
-    if manifest.get("status") != "ready" or manifest.get("schema_version") != 2:
+    if manifest.get("status") != "ready" or manifest.get("schema_version") != 3:
         raise ValueError("Processed corpus must be rebuilt before exporting results")
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
 
-def load_corpus_from_sqlite(db_path: str = "data/corpus.sqlite") -> List[Dict]:
+def load_corpus_from_sqlite(db_path: str = "data/corpus.sqlite", *,
+                          required_categories=DEFAULT_CATEGORIES,
+                          minimum_per_category=TARGET_PER_CATEGORY) -> List[Dict]:
     """Reject legacy, interrupted, altered, or metadata-mismatched ingestion."""
     rebuild = "Rebuild with python -m src.ingest_corpus before preparing the corpus."
     if not Path(db_path).is_file():
@@ -91,43 +94,67 @@ def load_corpus_from_sqlite(db_path: str = "data/corpus.sqlite") -> List[Dict]:
     try:
         with sqlite3.connect(db_path) as conn:
             conn.row_factory = sqlite3.Row
-            state = conn.execute("SELECT * FROM ingestion_state WHERE id = 1").fetchone()
+            state_row = conn.execute("SELECT * FROM ingestion_state WHERE id = 1").fetchone()
+            state = dict(state_row) if state_row else {}
             docs = [dict(r) for r in conn.execute(
                 "SELECT * FROM documents ORDER BY category, document_id")]
-        if not state or not state["complete"]:
-            raise ValueError(f"Ingestion is incomplete. {rebuild}")
-        expected = json.loads(state["metadata_json"])
+        if state.get("schema_version") != INGESTION_STATE_VERSION:
+            raise ValueError(f"Legacy ingestion state. {rebuild}")
+        if not state["audit_finished"]:
+            raise ValueError(f"Ingestion audit is incomplete. {rebuild}")
+        expected = json.loads(state["candidate_metadata_json"])
         snapshot = Path(db_path).parent / "metadata.csv"
         with snapshot.open(encoding="utf-8-sig", newline="") as handle:
             rows = validate_metadata(list(csv.DictReader(handle)))
         if expected != {r["document_id"]: metadata_hash(r) for r in rows}:
             raise ValueError(f"Metadata changed since ingestion. {rebuild}")
-        if {d["document_id"]: d["metadata_hash"] for d in docs} != expected:
-            raise ValueError(f"Corpus sources do not match ingestion manifest. {rebuild}")
+        accepted_list = json.loads(state["accepted_ids_json"])
+        failed_list = json.loads(state["failed_ids_json"])
+        accepted_ids, failed_ids = set(accepted_list), set(failed_list)
+        if (len(accepted_ids) != len(accepted_list) or len(failed_ids) != len(failed_list)
+                or accepted_ids & failed_ids or accepted_ids | failed_ids != set(expected)
+                or {d["document_id"] for d in docs} != accepted_ids):
+            raise ValueError(f"Accepted/rejected sources do not match ingestion manifest. {rebuild}")
+        candidate_rows = {r["document_id"]: r for r in rows}
         for doc in docs:
             if (doc["extraction_version"] != EXTRACTION_VERSION
+                    or doc["url"] != candidate_rows[doc["document_id"]]["url"]
+                    or doc["metadata_hash"] != expected[doc["document_id"]]
                     or doc["metadata_hash"] != metadata_hash(doc)
                     or doc["text_hash"] != text_hash(doc["raw_text"])):
                 raise ValueError(f"Stale or modified source: {doc['document_id']}. {rebuild}")
             quality = validate_extraction(doc["raw_text"], doc["source_type"])
             if quality["word_count"] != doc["word_count"]:
                 raise ValueError(f"Incorrect stored word count: {doc['document_id']}. {rebuild}")
+        audited_categories = json.loads(state["required_categories_json"])
+        counts = {cat: sum(d["category"] == cat for d in docs)
+                  for cat in sorted(set(audited_categories) | {r["category"] for r in rows})}
+        computed_ready = all(counts.get(cat, 0) >= state["minimum_per_category"]
+                             for cat in audited_categories)
+        if counts != json.loads(state["valid_counts_json"]) or bool(state["model_ready"]) != computed_ready:
+            raise ValueError(f"Readiness counts do not match accepted sources. {rebuild}")
+        for cat in required_categories:
+            if counts.get(cat, 0) < minimum_per_category:
+                raise ValueError(f"{cat}: need {minimum_per_category} valid documents, "
+                                 f"found {counts.get(cat, 0)}. {rebuild}")
+        if not computed_ready:
+            raise ValueError(f"Audited candidate pool is not model-ready. {rebuild}")
         return docs
-    except (sqlite3.Error, OSError, KeyError) as exc:
+    except (sqlite3.Error, OSError, KeyError, TypeError) as exc:
         raise ValueError(f"Legacy or invalid corpus. {rebuild}") from exc
 
 
 def prepare_document_corpus(
     seed: int = 42,
-    target_docs_per_cat: int = 80,
-    train_docs_per_cat: int = 64,
+    target_docs_per_cat: int = TARGET_PER_CATEGORY,
+    train_docs_per_cat: int = TRAIN_PER_CATEGORY,
     db_path: str = "data/corpus.sqlite",
     output_dir: str = "data/processed",
     expected_categories=DEFAULT_CATEGORIES,
     max_document_words=None,
     length_percentile=DEFAULT_LENGTH_PERCENTILE,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, List[str], List[Dict], List[Dict]]:
-    """Use every source at the target size; select a balanced subset of larger pools."""
+    """Freeze balanced candidate membership before seeded splitting and normalization."""
     if not 0 < train_docs_per_cat < target_docs_per_cat:
         raise ValueError("Require 0 < train_docs_per_cat < target_docs_per_cat")
     os.makedirs(output_dir, exist_ok=True)
@@ -135,6 +162,8 @@ def prepare_document_corpus(
     Path(output_dir, "splits.json").write_text(
         json.dumps({"status": "rebuild_required"}), encoding="utf-8")
     all_docs = load_corpus_from_sqlite(db_path)
+    with sqlite3.connect(db_path) as conn:
+        audit = json.loads(conn.execute("SELECT audit_json FROM ingestion_state WHERE id=1").fetchone()[0])
 
     rng = np.random.RandomState(seed)
     categories = sorted(list(set(d["category"] for d in all_docs)))
@@ -149,19 +178,9 @@ def prepare_document_corpus(
 
     cat_to_id = {c: i for i, c in enumerate(categories)}
 
+    membership = select_candidates(all_docs, target_docs_per_cat, categories)
     for cat in categories:
-        cat_candidates = [d for d in all_docs if d["category"] == cat]
-        if len(cat_candidates) < target_docs_per_cat:
-            raise ValueError(f"{cat}: need {target_docs_per_cat} valid documents, "
-                             f"found {len(cat_candidates)}; repair failed sources and re-ingest")
-        # Retain median selection only for a larger future candidate pool.
-        if len(cat_candidates) > target_docs_per_cat:
-            cat_candidates = sorted(cat_candidates, key=lambda x: (x["word_count"], x["document_id"]))
-            offset = (len(cat_candidates) - target_docs_per_cat) // 2
-            chosen = cat_candidates[offset : offset + target_docs_per_cat]
-        else:
-            chosen = cat_candidates
-        chosen = sorted(chosen, key=lambda x: x["document_id"])
+        chosen = [d for d in membership if d["category"] == cat]
 
         # Randomly permute with seed for train/test split
         perm = rng.permutation(len(chosen))
@@ -237,7 +256,7 @@ def prepare_document_corpus(
     # Save split manifest
     split_info = {
         "status": "ready",
-        "schema_version": 2,
+        "schema_version": 3,
         "extraction_version": EXTRACTION_VERSION,
         "seed": seed,
         "target_docs_per_cat": target_docs_per_cat,
@@ -252,8 +271,29 @@ def prepare_document_corpus(
             "reference": "explicit" if max_document_words is not None else "non_campus_training",
             "percentile": length_percentile,
         },
-        "corpus_fingerprint": text_hash(json.dumps(
+        "selection_policy": SELECTION_POLICY,
+        "candidate_count": audit["metadata_rows"],
+        "accepted_count": len(all_docs),
+        "selected_count": len(membership),
+        "minimum_required_per_category": audit["minimum_per_category"],
+        "candidate_metadata_fingerprint": text_hash(json.dumps(sorted(
+            (d["document_id"], d["metadata_hash"]) for d in audit["documents"]))),
+        "source_pool_fingerprint": text_hash(json.dumps(
             [(d["document_id"], d["metadata_hash"], d["text_hash"]) for d in all_docs])),
+        "corpus_fingerprint": text_hash(json.dumps(
+            [(d["document_id"], d["metadata_hash"], d["text_hash"]) for d in membership])),
+        "selected_document_ids": [d["document_id"] for d in membership],
+        "valid_unused_document_ids": sorted(set(d["document_id"] for d in all_docs)
+                                            - {d["document_id"] for d in membership}),
+        "failed_candidate_ids": audit["failed_document_ids"],
+        "counts_by_category": {
+            cat: {"candidate": sum(d["category"] == cat for d in audit["documents"]),
+                  "accepted_valid": sum(d["category"] == cat for d in all_docs),
+                  "failed": sum(d["category"] == cat and d["status"] == "failed" for d in audit["documents"]),
+                  "selected": target_docs_per_cat,
+                  "valid_unused": sum(d["category"] == cat for d in all_docs) - target_docs_per_cat,
+                  "train": train_docs_per_cat, "test": target_docs_per_cat - train_docs_per_cat}
+            for cat in categories},
         "categories": categories,
         "cat_to_id": cat_to_id,
         "n_train": len(train_docs),

@@ -12,6 +12,14 @@ from src.dataset import load_corpus_from_sqlite
 from src.preprocess import TextPreprocessor, clean_bitscan_pages
 
 
+def ingest_one(*args, **kwargs):
+    return ingest.ingest_corpus(*args, required_categories=("Campus",), minimum_per_category=1, **kwargs)
+
+
+def load_one(db):
+    return load_corpus_from_sqlite(db, required_categories=("Campus",), minimum_per_category=1)
+
+
 def article(word="students"):
     return (f"BITS Pilani {word} and faculty in Hyderabad and Goa study science. " * 10).strip()
 
@@ -135,43 +143,43 @@ def test_stale_url_force_and_missing_file_recovery(tmp_path, monkeypatch):
     # An existing ID-only file is never trusted.
     raw.mkdir()
     (raw / "CAMPUS_001.txt").write_text(article("stale"))
-    ingest.ingest_corpus(raw, db, metadata_rows=[row()], delay=0)
+    ingest_one(raw, db, metadata_rows=[row()], delay=0)
     assert len(calls) == 1
     (raw / "CAMPUS_001.txt").unlink()
-    ingest.ingest_corpus(raw, db, metadata_rows=[row()], delay=0)
+    ingest_one(raw, db, metadata_rows=[row()], delay=0)
     assert len(calls) == 1 and (raw / "CAMPUS_001.txt").exists()
     updated = row("https://example.org/new.pdf")
-    ingest.ingest_corpus(raw, db, metadata_rows=[updated], delay=0)
-    assert "newsource" in load_corpus_from_sqlite(db)[0]["raw_text"]
+    ingest_one(raw, db, metadata_rows=[updated], delay=0)
+    assert "newsource" in load_one(db)[0]["raw_text"]
     assert "oldsource" not in (raw / "CAMPUS_001.txt").read_text()
-    ingest.ingest_corpus(raw, db, metadata_rows=[updated], force=True, delay=0)
+    ingest_one(raw, db, metadata_rows=[updated], force=True, delay=0)
     assert len(calls) == 3
 
 
 def test_failed_refresh_cannot_leave_old_sqlite_row(tmp_path, monkeypatch):
     db = tmp_path / "corpus.sqlite"
     monkeypatch.setattr(ingest, "fetch_source_text", lambda *a, **k: (article(), "pdf"))
-    ingest.ingest_corpus(tmp_path / "raw", db, metadata_rows=[row()], delay=0)
+    ingest_one(tmp_path / "raw", db, metadata_rows=[row()], delay=0)
     def fail(*args, **kwargs):
         raise extract.ExtractionError("PDF needs OCR")
     monkeypatch.setattr(ingest, "fetch_source_text", fail)
-    report = ingest.ingest_corpus(tmp_path / "raw", db,
+    report = ingest_one(tmp_path / "raw", db,
                                  metadata_rows=[row("https://example.org/new.pdf")], delay=0)
     assert report["failed"] == 1
     with sqlite3.connect(db) as conn:
         assert conn.execute("SELECT count(*) FROM documents").fetchone()[0] == 0
-    with pytest.raises(ValueError, match="incomplete"):
-        load_corpus_from_sqlite(db)
+    with pytest.raises(ValueError, match="need 1 valid"):
+        load_one(db)
 
 
 def test_changed_snapshot_is_rejected(tmp_path, monkeypatch):
     db = tmp_path / "corpus.sqlite"
     monkeypatch.setattr(ingest, "fetch_source_text", lambda *a, **k: (article(), "pdf"))
-    ingest.ingest_corpus(tmp_path / "raw", db, metadata_rows=[row()], delay=0)
+    ingest_one(tmp_path / "raw", db, metadata_rows=[row()], delay=0)
     path = tmp_path / "metadata.csv"
     path.write_text(path.read_text().replace("issue.pdf", "other.pdf"))
     with pytest.raises(ValueError, match="Metadata changed"):
-        load_corpus_from_sqlite(db)
+        load_one(db)
 
 
 def test_legacy_database_requires_rebuild(tmp_path):
@@ -179,7 +187,7 @@ def test_legacy_database_requires_rebuild(tmp_path):
     with sqlite3.connect(db) as conn:
         conn.execute("CREATE TABLE documents (document_id TEXT)")
     with pytest.raises(ValueError, match="Rebuild"):
-        load_corpus_from_sqlite(db)
+        load_one(db)
 
 
 def test_version_change_and_text_corruption_are_not_cached(tmp_path, monkeypatch):
@@ -189,22 +197,22 @@ def test_version_change_and_text_corruption_are_not_cached(tmp_path, monkeypatch
         calls.append(True)
         return article(), "pdf"
     monkeypatch.setattr(ingest, "fetch_source_text", fetch)
-    ingest.ingest_corpus(tmp_path / "raw", db, metadata_rows=[row()], delay=0)
+    ingest_one(tmp_path / "raw", db, metadata_rows=[row()], delay=0)
     with sqlite3.connect(db) as conn:
         conn.execute("UPDATE documents SET extraction_version='bitscan-v1'")
     with pytest.raises(ValueError, match="Stale"):
-        load_corpus_from_sqlite(db)
-    ingest.ingest_corpus(tmp_path / "raw", db, metadata_rows=[row()], delay=0)
+        load_one(db)
+    ingest_one(tmp_path / "raw", db, metadata_rows=[row()], delay=0)
     with sqlite3.connect(db) as conn:
         conn.execute("UPDATE documents SET raw_text='corrupted'")
-    ingest.ingest_corpus(tmp_path / "raw", db, metadata_rows=[row()], delay=0)
+    ingest_one(tmp_path / "raw", db, metadata_rows=[row()], delay=0)
     assert len(calls) == 3
 
 
 def test_invalid_metadata_fails_before_touching_database(tmp_path):
     db = tmp_path / "corpus.sqlite"
     with pytest.raises(ValueError, match="duplicate"):
-        ingest.ingest_corpus(tmp_path / "raw", db, metadata_rows=[row(), row()], delay=0)
+        ingest_one(tmp_path / "raw", db, metadata_rows=[row(), row()], delay=0)
     assert not db.exists()
 
 
@@ -218,8 +226,8 @@ def test_legacy_migration_backs_up_and_refetches(tmp_path, monkeypatch):
                      ("CAMPUS_001", "Campus", "Old campus", "BITS", row()["url"],
                       "", 100, "old.txt", "old campus contents"))
     monkeypatch.setattr(ingest, "fetch_source_text", lambda *a, **k: (article("fresh"), "pdf"))
-    ingest.ingest_corpus(tmp_path / "raw", db, metadata_rows=[row()], delay=0)
-    assert "fresh" in load_corpus_from_sqlite(db)[0]["raw_text"]
+    ingest_one(tmp_path / "raw", db, metadata_rows=[row()], delay=0)
+    assert "fresh" in load_one(db)[0]["raw_text"]
     with sqlite3.connect(str(db) + ".legacy.bak") as conn:
         assert conn.execute("SELECT raw_text FROM documents").fetchone()[0] == "old campus contents"
 
@@ -229,7 +237,7 @@ def test_text_free_audit_includes_failed_source_type(tmp_path, monkeypatch):
         raise extract.ExtractionError("PDF needs OCR", word_count=7)
     monkeypatch.setattr(ingest, "fetch_source_text", fail)
     audit = tmp_path / "audit.csv"
-    report = ingest.ingest_corpus(tmp_path / "raw", tmp_path / "corpus.sqlite",
+    report = ingest_one(tmp_path / "raw", tmp_path / "corpus.sqlite",
                                  metadata_rows=[row()], delay=0, audit_path=audit)
     with audit.open(encoding="utf-8", newline="") as handle:
         source = next(csv.DictReader(handle))

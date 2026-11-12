@@ -20,6 +20,9 @@ from src.source_extract import (
     validate_extraction,
 )
 from src.preprocess import clean_wikinews_text
+from src.corpus_policy import DEFAULT_CATEGORIES, TARGET_PER_CATEGORY, SELECTION_POLICY, select_candidates
+
+INGESTION_STATE_VERSION = 2
 
 SHEET_ID = "1D2YwcC_XE9SZRnGOFqxx1-l5SPYDg5UfdqJ2rno8eeU"
 EXPORT_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=0"
@@ -120,10 +123,21 @@ def setup_database(db_path="data/corpus.sqlite"):
         for column in ("extraction_version", "metadata_hash", "text_hash", "source_type"):
             if column not in cols:
                 conn.execute(f"ALTER TABLE documents ADD COLUMN {column} TEXT")
+        state_cols = {r[1] for r in conn.execute("PRAGMA table_info(ingestion_state)")}
+        if state_cols and "audit_finished" not in state_cols:
+            # Only an explicit ingestion rebuild migrates ambiguous legacy state.
+            conn.execute("DROP TABLE ingestion_state")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS ingestion_state (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
-                metadata_json TEXT NOT NULL, complete INTEGER NOT NULL
+                schema_version INTEGER NOT NULL,
+                audit_finished INTEGER NOT NULL, model_ready INTEGER NOT NULL,
+                candidate_metadata_json TEXT NOT NULL,
+                accepted_ids_json TEXT NOT NULL, failed_ids_json TEXT NOT NULL,
+                valid_counts_json TEXT NOT NULL,
+                minimum_per_category INTEGER NOT NULL,
+                required_categories_json TEXT NOT NULL,
+                audit_json TEXT NOT NULL
             )
         """)
 
@@ -175,7 +189,7 @@ def write_source_audit(report, path):
     """Export reviewable per-source evidence without storing article text."""
     fields = ("document_id", "category", "url", "source_type", "ingestion_status",
               "extracted_word_count", "warning", "failure_reason", "extraction_version",
-              "metadata_hash", "text_hash")
+              "metadata_hash", "text_hash", "selection_status")
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     with Path(path).open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
@@ -189,25 +203,31 @@ def write_source_audit(report, path):
                 "failure_reason": doc.get("error", ""),
                 "extraction_version": report["extraction_version"],
                 "metadata_hash": doc["metadata_hash"], "text_hash": doc.get("text_hash", ""),
+                "selection_status": doc["selection_status"],
             })
 
 
 def ingest_corpus(raw_dir="data/raw", db_path="data/corpus.sqlite", *,
-                  metadata_rows=None, force=False, delay=0.3, audit_path=None):
+                  metadata_rows=None, force=False, delay=0.3, audit_path=None,
+                  required_categories=DEFAULT_CATEGORIES, minimum_per_category=TARGET_PER_CATEGORY):
     """Resume verified sources; invalidate stale rows before any network operation.
 
-    An incomplete run is unusable for model preparation. Raw files are evidence
-    only; the database, source hashes and completed-run manifest are authoritative.
+    A finished audit can contain rejected candidates. Readiness requires the
+    configured minimum of individually valid sources in every required category.
+    Interrupted runs are unusable. Raw files are never authoritative.
     """
     rows = validate_metadata(
         metadata_rows if metadata_rows is not None else fetch_sheet_metadata())
+    if minimum_per_category < 1 or not required_categories:
+        raise ValueError("A positive minimum and required categories are necessary")
     setup_database(db_path)
     expected = {r["document_id"]: metadata_hash(r) for r in rows}
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         cached = {r["document_id"]: dict(r) for r in conn.execute("SELECT * FROM documents")}
-        conn.execute("INSERT OR REPLACE INTO ingestion_state VALUES (1, ?, 0)",
-                     (json.dumps(expected, sort_keys=True),))
+        conn.execute("INSERT OR REPLACE INTO ingestion_state VALUES (1, ?, 0, 0, ?, '[]', '[]', '{}', ?, ?, '{}')",
+                     (INGESTION_STATE_VERSION, json.dumps(expected, sort_keys=True),
+                      minimum_per_category, json.dumps(list(required_categories))))
         # Invalidating all obsolete rows first makes interruption/fetch failure safe.
         for doc_id, record in cached.items():
             if (force or doc_id not in expected
@@ -265,13 +285,31 @@ def ingest_corpus(raw_dir="data/raw", db_path="data/corpus.sqlite", *,
                            for d in report["documents"])}
         for cat in sorted({r["category"] for r in rows})
     }
+    valid_counts = {cat: sum(d["category"] == cat for d in accepted)
+                    for cat in sorted(set(required_categories) | {r["category"] for r in rows})}
+    report["audit_finished"] = True
+    report["minimum_per_category"] = minimum_per_category
+    report["required_categories"] = list(required_categories)
+    report["model_ready"] = all(valid_counts[cat] >= minimum_per_category for cat in required_categories)
+    report["accepted_document_ids"] = sorted(d["document_id"] for d in accepted)
+    report["failed_document_ids"] = sorted(d["document_id"] for d in report["documents"] if d["status"] == "failed")
+    report["valid_counts"] = valid_counts
+    report["selection_policy"] = SELECTION_POLICY
+    selected_ids = {d["document_id"] for d in select_candidates(
+        accepted, minimum_per_category, required_categories)} if report["model_ready"] else set()
+    for doc in report["documents"]:
+        doc["selection_status"] = ("rejected" if doc["status"] == "failed" else
+                                   "selected" if doc["document_id"] in selected_ids else
+                                   "valid_unused" if report["model_ready"] else "valid_pending")
     report_path = Path(db_path).parent / "ingestion_report.json"
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     if audit_path:
         write_source_audit(report, audit_path)
     with sqlite3.connect(db_path) as conn:
-        conn.execute("UPDATE ingestion_state SET complete = ? WHERE id = 1",
-                     (int(report["failed"] == 0),))
+        conn.execute("""UPDATE ingestion_state SET audit_finished=1, model_ready=?,
+                     accepted_ids_json=?, failed_ids_json=?, valid_counts_json=?, audit_json=? WHERE id=1""",
+                     (int(report["model_ready"]), json.dumps(report["accepted_document_ids"]),
+                      json.dumps(report["failed_document_ids"]), json.dumps(valid_counts), json.dumps(report)))
     print(json.dumps({k: v for k, v in report.items() if k != "documents"}, indent=2))
     return report
 
@@ -290,4 +328,4 @@ if __name__ == "__main__":
             rows = list(csv.DictReader(handle))
     report = ingest_corpus(args.raw_dir, args.db_path, metadata_rows=rows, force=args.force,
                            audit_path=args.audit_path)
-    sys.exit(1 if report["failed"] else 0)
+    sys.exit(0 if report["model_ready"] else 1)
