@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 
 
 def plot_budget(
-    input_path="results/poison_budget_curve.json",
-    output_path="results/poison_budget_curve.png",
+    input_path="results/dataset_320/poison_budget_curve.json",
+    output_path="results/dataset_320/poison_budget_curve.png",
 ):
     with open(input_path, encoding="utf-8") as handle:
         payload = json.load(handle)

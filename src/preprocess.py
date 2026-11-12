@@ -8,9 +8,63 @@ Enforces protocol requirements:
 """
 
 import re
+from collections import Counter
 from typing import Dict, List, Optional, Set, Tuple, Union
 import numpy as np
 import scipy.sparse as sp
+
+
+def clean_bitscan_pages(pages: List[str]) -> str:
+    """Remove identifiable PDF furniture, preserving prose and campus vocabulary.
+
+    Repetition alone is insufficient: only short lines at page edges repeated
+    on at least half the pages (minimum two) are treated as running furniture.
+    TOC entries need dot leaders; editorial prose is deliberately retained.
+    """
+    lines_by_page = [
+        [re.sub(r"[ \t]+", " ", line).strip() for line in page.splitlines()
+         if line.strip()]
+        for page in pages
+    ]
+    edges = Counter()
+    for lines in lines_by_page:
+        edges.update(set(line.casefold() for line in lines[:2] + lines[-2:]
+                         if len(line.split()) <= 8
+                         and not re.search(r"[.!?]$", line)
+                         and not re.search(r"\b(students?|faculty)\b", line, re.I)))
+    repeated = {line for line, count in edges.items()
+                if count >= max(2, (len(pages) + 1) // 2)}
+    furniture = re.compile(
+        r"(?:bitscan(?:\s*[-:|]?\s*\d+)?|(?:page\s+)?\d+(?:\s+of\s+\d+)?|"
+        r"issue\s*(?:no\.?\s*)?\d+|"
+        r"(?:[iv12]+\s+)?semester\s*(?:[iv12]+)?\s*[,/-]?\s*\d{4}[-–/]\d{2,4}|"
+        r"(?:table of )?contents|editorial (?:board|team)|"
+        r"(?:printed|published|edited) by\s*:.*|"
+        r"(?:email|e-mail|phone|fax|contact us)\s*:.*)",
+        re.IGNORECASE,
+    )
+    cleaned_pages = []
+    for lines in lines_by_page:
+        kept = []
+        for index, line in enumerate(lines):
+            at_edge = index < 2 or index >= len(lines) - 2
+            layout_line = (
+                len(line.split()) <= 18
+                and re.search(r"\bbitscan\b", line, re.I)
+                and not re.search(r"\b(students?|faculty|research|events?|welcome)\b", line, re.I)
+                and re.fullmatch(
+                    r"[\d\s,.:|/–-]*(?:(?:bitscan|bits|pilani|hyderabad|goa|campus|"
+                    r"k|birla|semester|sem|issue|notes|no|i|ii|jan|june|july|dec|"
+                    r"january|december)[\d\s,.:|/–-]*)+", line, re.I)
+            )
+            if (furniture.fullmatch(line)
+                    or re.fullmatch(r".+\.{3,}\s*\d+(?:[-–]\d+)?", line)
+                    or layout_line
+                    or (at_edge and line.casefold() in repeated)):
+                continue
+            kept.append(line)
+        cleaned_pages.append("\n".join(kept))
+    return "\n\n".join(page for page in cleaned_pages if page).strip()
 
 # Standard English stopwords (self-contained to avoid external download dependencies)
 DEFAULT_STOPWORDS: Set[str] = {
@@ -78,16 +132,10 @@ class TextPreprocessor:
             "Integrated First Degree",
             "Higher Degree",
             "Doctoral Programmes",
-            "Dubai Campus",
             "Give us your feedback",
             "Upload Screenshot",
             "Keep Exploring",
-            "Campus",
             "University Home",
-            "K K Birla Goa",
-            "Pilani",
-            "Hyderabad",
-            "Dubai",
             "BITSoM, Mumbai",
             "BITSLAW, Mumbai",
             "Academics",

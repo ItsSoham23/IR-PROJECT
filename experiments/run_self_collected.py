@@ -1,15 +1,15 @@
 """
 Full Experimental Pipeline and Adversarial Stress Test on Self-Collected Corpus.
 
-Dataset: 100 documents across 4 categories ('Campus', 'Politics', 'Sports', 'Technology')
-- 80 training documents (20 per category)
-- 20 test documents (5 per category)
+Dataset: 320 documents across 4 categories ('Campus', 'Politics', 'Sports', 'Technology')
+- 256 training documents (64 per category)
+- 64 test documents (16 per category)
 
 Conditions:
-- Condition A: Clean Baseline (80 docs)
-- Condition B_repeat: 80 clean + 10 keyword repetition poison documents targeting Category 0
-- Condition B_bridge: 80 clean + 10 bridging poison documents (Category 0 + Category 1)
-- Condition C: 80 clean + 10 random vocabulary control documents
+- Condition A: Clean Baseline (256 docs)
+- Condition B_repeat: 256 clean + 10 keyword repetition poison documents targeting Category 0
+- Condition B_bridge: 256 clean + 10 bridging poison documents (Category 0 + Category 1)
+- Condition C: 256 clean + 10 random vocabulary control documents
 - Defenses on B: Deduplication filtering, Tempered EM (beta=0.85), Likelihood trimming
 
 Multi-seed evaluation across 5 seeds with Bootstrap 95% Confidence Intervals,
@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 import numpy as np
 import matplotlib.pyplot as plt
 
-from src.dataset import prepare_100_document_corpus
+from src.dataset import prepare_document_corpus, save_experiment_manifest
 from src.plsa import PLSA
 from src.align import TopicAligner
 from src.baselines import LSIBaseline, TFIDFBaseline
@@ -62,11 +62,11 @@ def bootstrap_ci(data: List[float], n_boot: int = 1000, ci: float = 0.95) -> Tup
 def run_self_collected_experiments(
     seeds: List[int] = [42, 101, 202, 303, 404],
     n_topics: int = 4,
-    output_dir: str = "results",
+    output_dir: str = "results/dataset_320",
 ):
     os.makedirs(output_dir, exist_ok=True)
     print("=" * 85)
-    print("EXPERIMENTS ON SELF-COLLECTED CORPUS (100 DOCS, 4 CATEGORIES)")
+    print("EXPERIMENTS ON SELF-COLLECTED CORPUS (320 DOCS, 4 CATEGORIES)")
     print("=" * 85)
 
     condition_names = [
@@ -91,9 +91,10 @@ def run_self_collected_experiments(
     for seed_idx, seed in enumerate(seeds):
         print(f"\n>>> Running Seed {seed_idx + 1}/{len(seeds)} (Seed: {seed}) <<<")
         # Prepare stratified split for this seed
-        X_train, X_test, y_train, y_test, vocab, train_docs, test_docs = prepare_100_document_corpus(
+        X_train, X_test, y_train, y_test, vocab, train_docs, test_docs = prepare_document_corpus(
             seed=seed, output_dir=os.path.join("data", "processed")
         )
+        save_experiment_manifest(os.path.join(output_dir, f"self_collected_dataset_seed_{seed}.json"))
         with open(os.path.join("data", "processed", "cleaned_corpus.json"), encoding="utf-8") as handle:
             corpus_tokens = [item["tokens"] for item in json.load(handle)]
 

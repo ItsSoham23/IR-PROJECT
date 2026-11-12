@@ -1,3 +1,6 @@
+> Historical report: the counts, sources, results and outstanding-work status below
+> describe the earlier corpus. See `dataset_update_audit.md` for the 320-source update.
+
 # Intermediate Status Update: PLSA Replication and Adversarial Stress Testing
 
 **Course:** Information Retrieval (CS F469), Category 1: Classic Paper Replication and Stress Testing

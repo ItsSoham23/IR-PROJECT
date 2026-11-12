@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 
 
 def plot_evasion(
-    input_path="results/evasion_summary.json",
-    output_path="results/evasion_curve.png",
+    input_path="results/dataset_320/evasion_summary.json",
+    output_path="results/dataset_320/evasion_curve.png",
 ):
     with open(input_path, encoding="utf-8") as handle:
         records = json.load(handle)["runs"]

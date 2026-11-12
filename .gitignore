@@ -7,6 +7,10 @@ __pycache__/
 env/
 venv/
 .venv/
+.venv-test/
+data/rebuild/
+*.legacy.bak
+data/ingestion_report.json
 
 # Testing & Coverage
 .pytest_cache/
