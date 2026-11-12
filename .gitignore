@@ -33,11 +33,12 @@ data/processed/*
 !data/processed/splits.json
 data/demo_processed/*
 !data/demo_processed/.gitkeep
-data/raw/*.txt
-data/raw/*/*.txt
+data/raw/**/*.txt
+data/raw/**/*.tmp
 *.sqlite
 *.sqlite3
-!data/corpus.sqlite
+*.sqlite-*
+*.sqlite3-*
 *.log
 
 # OS & Editor

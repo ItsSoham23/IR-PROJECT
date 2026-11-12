@@ -110,6 +110,12 @@ def test_experiment_entry_points_use_new_corpus(corpus, tmp_path, monkeypatch):
         return original_lda(*args, **kwargs)
     monkeypatch.setattr(lda_baseline, "LdaModel", short_lda)
     run_self_collected.run_self_collected_experiments(seeds=[42])
+    potency = json.loads((tmp_path / "results/dataset_320/attack_potency.json").read_text())
+    assert potency["evaluation_corpus"] == "clean_training"
+    assert potency["likelihood_unit"] == "nats_per_token"
+    for runs in potency["runs"].values():
+        assert "delta_eval_ll_per_token" in runs[0]
+        assert "delta_log_likelihood" not in runs[0]
     lda_baseline.run_lda_experiments(seeds=[42])
     poison_budget.run_poison_budget(budgets=(2,))
     test_time_evasion.run_evasion(swap_counts=(0, 1))

@@ -12,7 +12,7 @@ from src.preprocess import clean_bitscan_pages
 USER_AGENT = "Mozilla/5.0 (Academic IR corpus ingestion)"
 MIN_WORDS = 50
 LONG_DOCUMENT_WORDS = 5000
-EXTRACTION_VERSION = "bitscan-v1"
+EXTRACTION_VERSION = "corpus-v2.1"
 
 
 class ExtractionError(ValueError):
@@ -117,6 +117,10 @@ def extract_html_text(payload, wikinews=False):
     if b"%PDF-" in payload[:1024]:
         raise ExtractionError("PDF bytes cannot be decoded as HTML")
     soup = BeautifulSoup(payload, "html.parser")
+    if wikinews:
+        # Observed dynamic related-story boxes, distinct from article bullet lists.
+        for tag in soup.select(".infobox.noprint"):
+            tag.decompose()
     for tag in soup(["script", "style", "nav", "header", "footer", "iframe", "noscript", "table"]):
         tag.decompose()
     for tag in list(soup.find_all(True)):
@@ -129,9 +133,16 @@ def extract_html_text(payload, wikinews=False):
         soup.find("article") or soup.find("div", class_="entry-content")
         or soup.find("div", id="content") or soup.find("div", class_="content") or soup.find("main"))
     node = node or soup.find("body") or soup
-    tags = ["p"] if wikinews else ["h1", "h2", "h3", "h4", "p", "li"]
-    lines = [p.get_text(" ", strip=True) for p in node.find_all(tags)]
-    text = "\n\n".join(dict.fromkeys(line for line in lines if len(line) > 10))
+    tags = ["h2", "h3", "h4", "p", "li"] if wikinews else ["h1", "h2", "h3", "h4", "p", "li"]
+    lines = []
+    for element in node.find_all(tags):
+        line = element.get_text(" ", strip=True)
+        if wikinews and element.name in {"h2", "h3", "h4"}:
+            marks = "=" * int(element.name[1])
+            lines.append(f"{marks} {line.removesuffix('[edit]').strip()} {marks}")
+        elif len(line) > 10:
+            lines.append(line)
+    text = "\n\n".join(dict.fromkeys(lines))
     if "Upload Screenshot" in text:
         text = text.split("Upload Screenshot", 1)[1]
     if "Latest news" in text:

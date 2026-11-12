@@ -19,6 +19,7 @@ from src.source_extract import (
     extract_html_text, fetch_pdf_text, fetch_source_text, source_kind,
     validate_extraction,
 )
+from src.preprocess import clean_wikinews_text
 
 SHEET_ID = "1D2YwcC_XE9SZRnGOFqxx1-l5SPYDg5UfdqJ2rno8eeU"
 EXPORT_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=0"
@@ -57,14 +58,14 @@ def fetch_wikinews_text(url: str) -> str:
                 if pid != "-1" and "extract" in pdata:
                     extract = pdata["extract"].strip()
                     if len(extract) > 100:
-                        return extract
+                        return clean_wikinews_text(extract)
     except Exception as e:
         pass
 
     payload, content_type, final_url = download(url)
     if source_kind(final_url, content_type, payload) in {"pdf", "drive"}:
         raise ExtractionError("Wikinews fallback returned a PDF or Drive viewer")
-    return extract_html_text(payload, wikinews=True)
+    return clean_wikinews_text(extract_html_text(payload, wikinews=True))
 
 
 def fetch_bits_text(url):
@@ -170,8 +171,29 @@ def word_count_summary(records):
     }
 
 
+def write_source_audit(report, path):
+    """Export reviewable per-source evidence without storing article text."""
+    fields = ("document_id", "category", "url", "source_type", "ingestion_status",
+              "extracted_word_count", "warning", "failure_reason", "extraction_version",
+              "metadata_hash", "text_hash")
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with Path(path).open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        for doc in report["documents"]:
+            writer.writerow({
+                "document_id": doc["document_id"], "category": doc["category"],
+                "url": doc["url"], "source_type": doc["source_type"],
+                "ingestion_status": doc["status"], "extracted_word_count": doc["word_count"],
+                "warning": "; ".join(doc.get("warnings", [])),
+                "failure_reason": doc.get("error", ""),
+                "extraction_version": report["extraction_version"],
+                "metadata_hash": doc["metadata_hash"], "text_hash": doc.get("text_hash", ""),
+            })
+
+
 def ingest_corpus(raw_dir="data/raw", db_path="data/corpus.sqlite", *,
-                  metadata_rows=None, force=False, delay=0.3):
+                  metadata_rows=None, force=False, delay=0.3, audit_path=None):
     """Resume verified sources; invalidate stale rows before any network operation.
 
     An incomplete run is unusable for model preparation. Raw files are evidence
@@ -198,12 +220,15 @@ def ingest_corpus(raw_dir="data/raw", db_path="data/corpus.sqlite", *,
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
-    report = {"extraction_version": EXTRACTION_VERSION, "documents": []}
+    report = {"extraction_version": EXTRACTION_VERSION, "metadata_rows": len(rows), "documents": []}
     accepted = []
     for index, row in enumerate(rows, 1):
         doc_id = row["document_id"]
         record = cached.get(doc_id)
-        result = {"document_id": doc_id, "category": row["category"], "url": row["url"]}
+        kind = source_kind(row["url"])
+        result = {"document_id": doc_id, "category": row["category"], "url": row["url"],
+                  "source_type": "pdf" if kind == "drive" else kind,
+                  "metadata_hash": metadata_hash(row)}
         try:
             reused = not force and cached_source_is_current(record, row)
             if reused:
@@ -220,7 +245,8 @@ def ingest_corpus(raw_dir="data/raw", db_path="data/corpus.sqlite", *,
             write_raw_files(raw_dir, record)
             save_to_database(db_path, record)
             accepted.append(record)
-            result.update(quality, status="cached" if reused else "accepted", source_type=kind)
+            result.update(quality, status="cached" if reused else "accepted", source_type=kind,
+                          text_hash=record["text_hash"])
         except Exception as exc:
             with sqlite3.connect(db_path) as conn:
                 conn.execute("DELETE FROM documents WHERE document_id = ?", (doc_id,))
@@ -232,8 +258,17 @@ def ingest_corpus(raw_dir="data/raw", db_path="data/corpus.sqlite", *,
     report["word_counts"] = word_count_summary(accepted)
     report["accepted"] = len(accepted)
     report["failed"] = len(rows) - len(accepted)
+    report["categories"] = {
+        cat: {"accepted": sum(d["category"] == cat and d["status"] != "failed"
+                             for d in report["documents"]),
+              "failed": sum(d["category"] == cat and d["status"] == "failed"
+                           for d in report["documents"])}
+        for cat in sorted({r["category"] for r in rows})
+    }
     report_path = Path(db_path).parent / "ingestion_report.json"
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    if audit_path:
+        write_source_audit(report, audit_path)
     with sqlite3.connect(db_path) as conn:
         conn.execute("UPDATE ingestion_state SET complete = ? WHERE id = 1",
                      (int(report["failed"] == 0),))
@@ -247,10 +282,12 @@ if __name__ == "__main__":
     parser.add_argument("--metadata", type=Path, help="Use a reviewed local CSV snapshot")
     parser.add_argument("--db-path", default="data/corpus.sqlite")
     parser.add_argument("--raw-dir", default="data/raw")
+    parser.add_argument("--audit-path", type=Path, help="Write a text-free per-source audit CSV")
     args = parser.parse_args()
     rows = None
     if args.metadata:
         with args.metadata.open(encoding="utf-8-sig", newline="") as handle:
             rows = list(csv.DictReader(handle))
-    report = ingest_corpus(args.raw_dir, args.db_path, metadata_rows=rows, force=args.force)
+    report = ingest_corpus(args.raw_dir, args.db_path, metadata_rows=rows, force=args.force,
+                           audit_path=args.audit_path)
     sys.exit(1 if report["failed"] else 0)

@@ -1,94 +1,119 @@
-# Dataset update audit ? 12 November 2026
+# Dataset review audit - 12 November 2026
 
-Branch: `dataset-320-ingestion-update`. No commits or pushes were made.
+Branch: **dataset-320-ingestion-update**. Extraction version: **corpus-v2.1**.
 
-The code targets **320 documents, 80 per category, with 256 train / 64 test** (64/16 per category). The live extraction audit found **304 usable documents and 16 rejected Campus sources**. The production corpus is therefore **not ready**; no 320-document model results are claimed.
+Live audit: **304 accepted / 16 failed**, from 320 metadata rows. The target remains 80 documents/category, 64/16 train/test per category, and 256/64 overall. The real full corpus is not prepared; final five-seed experiments have not been run.
 
-## Source audit and observed lengths
+## Live source audit
 
-The current [metadata spreadsheet](https://docs.google.com/spreadsheets/d/1D2YwcC_XE9SZRnGOFqxx1-l5SPYDg5UfdqJ2rno8eeU/edit) was read without edits and saved to `data/metadata.csv`. All 320 IDs and URLs were inspected; each category has 80 entries and there are no duplicate source URLs.
+The authoritative registry is data/metadata.csv. Current URLs were downloaded using the new cleaner; same-version resumes are marked cached. No bitscan-v1 or intermediate corpus-v2 rows are accepted. [The per-source CSV](dataset_source_audit.csv) contains IDs, URLs, source types, statuses, word counts, warnings, errors, version and metadata/text hashes, with no article text. The detailed local report and raw extractions are under ignored data/rebuild/.
 
-Counts below are whitespace-separated words after extraction and source-specific cleaning, before model normalization. Rejected sources are excluded.
-
-| Category | Accepted | Min | Median | 90th percentile | Max |
+| Category | Accepted | Failed | Min words | Median | p90 | Max |
 |---|---:|---:|---:|---:|---:|---:|
-| Sports | 80 | 85 | 276.5 | 441.8 | 638 |
-| Technology | 80 | 65 | 264.5 | 535.8 | 2,519 |
-| Politics | 80 | 70 | 316.0 | 736.1 | 1,314 |
-| Campus | 64 | 3,838 | 8,953.5 | 12,902.6 | 17,872 |
+| Campus | 64 | 16 | 3853 | 8926.5 | 12899.6 | 17862 |
+| Politics | 80 | 0 | 66 | 310.5 | 683.0 | 1184 |
+| Sports | 80 | 0 | 51 | 264.0 | 435.4 | 634 |
+| Technology | 80 | 0 | 65 | 256.5 | 565.1 | 2598 |
 
-## Normalization decision
+Counts are after source-specific cleaning and before model normalization. Quality limits were not weakened. Google Drive source CAMPUS_048 succeeds.
 
-The magazines are tens of times longer than typical articles. Use the 90th percentile of cleaned non-Campus **training** document lengths as the prefix budget: this keeps approximately 90% of training articles within budget without letting magazine lengths determine the limit. At seed 42, the 192 article training documents yield a **534-word cap**. This is a calculated reference value, not a hardcoded constant. Other seeds may produce different caps.
+## BITScan evidence and changes
 
-Apply the same cap to every category. Retain the original word order, stop at the last complete sentence if it fills at least half the budget, and otherwise use a word-boundary prefix for poorly punctuated PDF text. Never randomly sample words. Override `max_document_words` or `length_percentile` through `prepare_document_corpus`. Full extraction remains available in SQLite; `model_text` is used consistently for feature matrices and test-time evasion. Vocabulary remains train-only with `min_df=2`, `max_df_ratio=0.85`.
+Real page-block extractions were inspected from CAMPUS_001, 021, 039 (Pilani), 045 (Hyderabad), and 066, 079 (Goa). Observed furniture now covered by offline regressions:
 
-## Extraction and stale-data protection
+- Pilani: BITS Pilani, Pilani campus, followed by a changing page number. Combined-line variants such as BITS Pilani, Pilani campus 1 are also covered.
+- Pilani: Semester I, 2023-24, BITScan Issue-43; Semester I 2013-14, bitscan, Pilani Campus; Birla Institute of Technology and Science; and - 3 - Semester I, 2004-05.
+- Hyderabad: Issue 22 (Jan-June 2025), BITScan, Hyderabad Campus, with page numbers before/after or on a separate line. The combined review example is tested too.
+- Goa: semester I notes 2021-22 bitscan, BITS Pilani K K Birla Goa Campus, and Semester I 2015-16 bitscan, K.K. Birla Goa Campus, with changing page numbers.
 
-- Central routing: Wikinews uses MediaWiki with an HTML fallback; ordinary HTML uses BeautifulSoup; PDF URL hints, response MIME type and byte signatures route to PDF extraction.
-- Added `PyMuPDF>=1.24.0,<2`; tested with 1.28.2. PDF bytes are signature-checked, opened from memory, and extracted page by page as ordered text blocks. See the [PyMuPDF text extraction documentation](https://pymupdf.readthedocs.io/en/latest/recipes-text.html). PDF bytes never enter UTF-8 HTML decoding.
-- Drive viewer URLs are converted to download requests. `CAMPUS_048` succeeded (14,457 words). Login/confirmation responses produce actionable failures.
-- BITScan cleaning removes page numbers, recognizable issue/semester headers, short repeated page-edge furniture, dot-leader TOC entries and explicit editorial/contact labels. Campus terms and substantive editorial prose remain.
-- Empty, fewer-than-50-word, garbled and mostly empty PDF text layers are rejected. Over 5,000 words is flagged as unusually long, then handled by model normalization. The PDF coverage check requires at least half the pages to have 20 words of text.
-- SQLite cache reuse requires matching source URL, metadata hash, extraction version and text hash. Raw filenames alone are never trusted; verified database content repairs missing or altered raw files.
-- Changed/removed sources are invalidated before downloads. Failed refreshes leave no obsolete SQLite row. An incomplete run cannot be prepared for modeling. First migration of a legacy database creates a `.legacy.bak` copy; `--force` refreshes even same-URL sources.
-- Processed matrices are always rebuilt. Manifests record readiness, source fingerprint, seed, split counts and normalization. New experiment outputs go to `results/dataset_320/`, with per-experiment dataset manifests. Historical results and source files were preserved.
+Only short strings composed of restricted publication-layout vocabulary qualify for repeated-edge matching. Boundary page numbers and punctuation are normalized; issues and years remain in the signature. A signature must recur on at least two pages and occur within the first/last three nonempty lines. Interior one-off labels and substantive sentences survive. In CAMPUS_074, two interior speaker affiliations saying BITS Pilani, Pilani Campus were inspected and deliberately preserved. Paragraph/page boundaries are retained; numbers, dot-leader TOC entries and explicit contact labels are cleaned conservatively.
 
-## Sources requiring intervention
+## Wikinews evidence and changes
 
-The following 14 PDFs require OCR or a replacement official source with a usable text layer; the remaining two URLs return HTTP 404. They were rejected rather than replaced with old Campus text.
+Live API and HTML samples were inspected across Sports (SPORTS_001, 039), Technology (TECH_001, 025), and Politics (POL_001, 029), supplemented by heading counts from the corpus. The cleaner removes:
 
-| ID | Source URL | Required action |
-|---|---|---|
-| CAMPUS_009 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/I-Semester-2019-2020.pdf) | OCR or supply an official PDF with a usable text layer |
-| CAMPUS_012 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2018-2019.pdf) | OCR or supply an official PDF with a usable text layer |
-| CAMPUS_026 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2011-2012.pdf) | OCR or supply an official PDF with a usable text layer |
-| CAMPUS_029 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/I-Semester-2009-2010.pdf) | OCR or supply an official PDF with a usable text layer |
-| CAMPUS_030 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2009-2010.pdf) | OCR or supply an official PDF with a usable text layer |
-| CAMPUS_031 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/I-Semester-2008-2009.pdf) | OCR or supply an official PDF with a usable text layer |
-| CAMPUS_032 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2008-2009.pdf) | OCR or supply an official PDF with a usable text layer |
-| CAMPUS_034 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2007-2008.pdf) | OCR or supply an official PDF with a usable text layer |
-| CAMPUS_035 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/I-Semester-2006-2007.pdf) | OCR or supply an official PDF with a usable text layer |
-| CAMPUS_036 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2006-2007.pdf) | OCR or supply an official PDF with a usable text layer |
-| CAMPUS_037 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/I-Semester-2005-2006.pdf) | OCR or supply an official PDF with a usable text layer |
-| CAMPUS_038 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2005-2006.pdf) | OCR or supply an official PDF with a usable text layer |
-| CAMPUS_040 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2004-2005.pdf) | OCR or supply an official PDF with a usable text layer |
-| CAMPUS_042 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2003-2004.pdf) | OCR or supply an official PDF with a usable text layer |
-| CAMPUS_062 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/BITSCAN-Jan15-toDec15.pdf) | Repair/replace the official URL (HTTP 404) |
-| CAMPUS_064 | [PDF](https://www.bits-pilani.ac.in/wp-content/uploads/BITSCAN-Jan-13-toDec14.pdf) | Repair/replace the official URL (HTTP 404) |
+- Leading weekday/month publication-date lines.
+- Source/Sources, References, Related news, Related stories, Related, Related wikinews, External link/External links, Sister links, and See also sections, including subsections. It resumes at a peer article heading rather than deleting all later article content.
+- The exact opinion invitation: Have an opinion on this story? Share it!
+- HTML .infobox.noprint related-story widgets, observed in TECH_001 and POL_001. Article bullet lists and interview answers remain.
 
-## Local artifacts and rebuild
+Singular Source and External link headings were observed in TECH_008 and TECH_052; Related wikinews appeared in TECH_065, 066 and 069. Both extraction paths use the same text cleaner. No blanket removal of said, sources, Wikinews, licensing-related words or journalistic prose was introduced. Archive/licensing templates were not recurring material in these extracted samples; no speculative text rules were added.
 
-The isolated audit is in `data/rebuild/`: `corpus.sqlite`, `raw/`, `metadata.csv`, `ingestion_report.json` and `ingestion.log`. It contains the current accepted sources and an incomplete-run marker. The old production `data/corpus.sqlite` and `data/raw/` were preserved; the loader rejects that legacy database. The old processed split was replaced with `rebuild_required`. No model matrices or full experiment results were produced from the incomplete live corpus.
+## Normalization after cleaning
 
-After repairing the metadata URLs or providing OCR-backed PDFs, resume the isolated audit:
+The six inspected magazines showed four clear editorial openings (Pilani 001/021 and Goa 066/079), an opening semester overview (Pilani 039), and a cover followed by events (Hyderabad 045). A whole-document prefix was therefore not retained for Campus PDFs.
 
-```bash
-python -m src.ingest_corpus --metadata data/metadata.csv --db-path data/rebuild/corpus.sqlite --raw-dir data/rebuild/raw
-```
+The deterministic policy selects the first page with at least 50 words that is not recognized front matter: Editorial, from the editor (including adjacent split heading lines), Dear Readers, contents, In Pursuit of Excellence, or the observed Pilani alumni editorial continuation. It then takes a sentence-bounded prefix of that page. Other sources keep the prefix policy. Full editorial/source text remains in SQLite. The rule and cap are recorded in split manifests; model_page is saved per document. CAMPUS_067 and CAMPUS_072 confirmed that Goa column continuations can precede the split editorial heading; regression tests cover this layout. No random word sampling or test-derived length statistic is used.
 
-For the production rebuild, using the reviewed CSV (or omit `--metadata` to fetch the latest sheet):
+The training-article p90 remains the budget. The **diagnostic seed-42 value is 509 words**, derived from the 192 non-Campus training IDs that would occur in a complete 80-per-category split. This is not a completed 320-document split or production manifest: preparation correctly remains blocked.
 
-```bash
-python -m src.ingest_corpus --metadata data/metadata.csv
-python -m src.dataset
-python experiments/run_self_collected.py
-python experiments/lda_baseline.py
-python experiments/poison_budget.py
-python experiments/test_time_evasion.py
-```
+| Reviewed source | Selected PDF page (1-based) | Model words at diagnostic cap |
+|---|---:|---:|
+| CAMPUS_001 | 3 | 501 |
+| CAMPUS_021 | 4 | 384 |
+| CAMPUS_039 | 3 | 290 |
+| CAMPUS_045 | 2 | 268 |
+| CAMPUS_066 | 3 | 500 |
+| CAMPUS_079 | 3 | 328 |
 
-Use `--force` if the contents at an unchanged URL have been repaired. Keep OCR text inside a PDF text layer and point the metadata at its accessible PDF URL; no viewer HTML or manual SQLite injection is required.
+Selected samples concern visits, academic events, a symposium, Foundation Day, convocation and technical sessions instead of editorial introductions. All accepted Campus sources were checked for a selectable page and bounded model length. Multi-column PDF reading order can still contain continuation fragments; selection does not guarantee perfect reconstruction of the source layout.
+
+## Corrected attack potency
+
+Each condition fits its own TopicAligner on clean training labels. Word mass uses that condition's topic for the target class. Test probabilities are independently reordered with align_proportions before target-class drift is computed. Clean-model topic numbers are used only for its own attack seed words.
+
+Both frozen models fold in the identical clean-training matrix X with the same vocabulary. With theta from this common inference protocol and phi the frozen topic-word matrix:
+
+L(X; M) = sum_dw X_dw log(max(sum_k theta_M(d,k) phi_M(k,w), 1e-12)) / sum_dw X_dw
+
+delta_eval_ll_per_token = L(X; condition) - L(X; baseline).
+
+Units are nats/token. Negative values mean worse fit to the common corpus; positive values mean better fit. This is an in-sample diagnostic, not a held-out generalization estimate. Augmented training objectives are never subtracted. Both normalized scores and the difference are saved to results/dataset_320/attack_potency.json. Tests deliberately permute target topics and supply incomparable training objectives to verify the comparison.
+
+## Remaining source failures
+
+| Document ID | Source type | Reason | URL |
+|---|---|---|---|
+| CAMPUS_009 | pdf | Probable failed PDF extraction: most pages have no usable text; run OCR | [source](https://www.bits-pilani.ac.in/wp-content/uploads/I-Semester-2019-2020.pdf) |
+| CAMPUS_012 | pdf | Probable failed PDF extraction: most pages have no usable text; run OCR | [source](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2018-2019.pdf) |
+| CAMPUS_026 | pdf | Probable failed PDF extraction: most pages have no usable text; run OCR | [source](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2011-2012.pdf) |
+| CAMPUS_029 | pdf | Probable failed PDF extraction: most pages have no usable text; run OCR | [source](https://www.bits-pilani.ac.in/wp-content/uploads/I-Semester-2009-2010.pdf) |
+| CAMPUS_030 | pdf | Probable failed PDF extraction: most pages have no usable text; run OCR | [source](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2009-2010.pdf) |
+| CAMPUS_031 | pdf | Probable failed PDF extraction: most pages have no usable text; run OCR | [source](https://www.bits-pilani.ac.in/wp-content/uploads/I-Semester-2008-2009.pdf) |
+| CAMPUS_032 | pdf | Probable failed PDF extraction: most pages have no usable text; run OCR | [source](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2008-2009.pdf) |
+| CAMPUS_034 | pdf | Probable failed PDF extraction: most pages have no usable text; run OCR | [source](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2007-2008.pdf) |
+| CAMPUS_035 | pdf | Probable failed PDF extraction: most pages have no usable text; run OCR | [source](https://www.bits-pilani.ac.in/wp-content/uploads/I-Semester-2006-2007.pdf) |
+| CAMPUS_036 | pdf | Probable failed PDF extraction: most pages have no usable text; run OCR | [source](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2006-2007.pdf) |
+| CAMPUS_037 | pdf | Probable failed PDF extraction: most pages have no usable text; run OCR | [source](https://www.bits-pilani.ac.in/wp-content/uploads/I-Semester-2005-2006.pdf) |
+| CAMPUS_038 | pdf | Probable failed PDF extraction: most pages have no usable text; run OCR | [source](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2005-2006.pdf) |
+| CAMPUS_040 | pdf | Probable failed PDF extraction: most pages have no usable text; run OCR | [source](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2004-2005.pdf) |
+| CAMPUS_042 | pdf | Probable failed PDF extraction: most pages have no usable text; run OCR | [source](https://www.bits-pilani.ac.in/wp-content/uploads/II-Semester-2003-2004.pdf) |
+| CAMPUS_062 | pdf | HTTP 404: repair/replace the official URL | [source](https://www.bits-pilani.ac.in/wp-content/uploads/BITSCAN-Jan15-toDec15.pdf) |
+| CAMPUS_064 | pdf | HTTP 404: repair/replace the official URL | [source](https://www.bits-pilani.ac.in/wp-content/uploads/BITSCAN-Jan-13-toDec14.pdf) |
+
+## Artifact cleanup and reproducibility
+
+The legacy SQLite database and all 240 generated raw text files were untracked with git rm --cached; local files remain. data/raw/.gitkeep and data/metadata.csv remain tracked. Raw text, SQLite databases and their journal/sidecar files are ignored. Existing legacy local files are not the new corpus. This review-fix task did not create additional commits, push or merge; Git history records earlier work.
+
+The broad requirements.txt was retained. [requirements-lock.txt](../requirements-lock.txt) captures the tested packages; [verification_environment.json](verification_environment.json) records Python/OS and versions. Tested: Python 3.13.7, NumPy 2.5.4, SciPy 1.18.1, scikit-learn 1.9.1, Gensim 4.4.0 and PyMuPDF 1.28.2 on Windows 11. Cross-environment numerical equality is not established.
 
 ## Verification and changed files
 
-`python -m pytest -q`: **43 passed**, including the original nine. Tests cover routing, PDF extraction/rejection, conservative cleaning, stale URLs, cache integrity, legacy backups, deterministic normalization, all 320 IDs, 64/16 splits, held-out vocabulary exclusion, and short integration runs through all four self-collected experiment entry points. Reduced iteration counts apply only within the integration test. Python compilation and `git diff --check` passed. The real legacy and incomplete databases were both verified to reject preparation.
+**78 tests passed**, including all original 43 and short 320-document fixture integration runs through self-collected, LDA, poison-budget and evasion pipelines. Compilation and working-tree/staged diff checks passed. The live incomplete corpus was confirmed to reject preparation.
 
-- Ingestion/preprocessing: `src/ingest_corpus.py`, new `src/source_extract.py`, `src/preprocess.py`, `requirements.txt`.
-- Corpus construction: `src/dataset.py`, `data/metadata.csv`, `data/processed/splits.json`.
-- Consumers: `demo.py`, `experiments/run_self_collected.py`, `experiments/lda_baseline.py`, `experiments/poison_budget.py`, `experiments/test_time_evasion.py`, and the three `experiments/visualize_*.py` scripts.
-- Verification/docs: new `tests/test_ingestion.py`, new `tests/test_dataset.py`, `README.md`, `.gitignore`, the historical-report banner in `reports/status_update_draft.md`, and this audit.
+- Code: src/preprocess.py, src/source_extract.py, src/ingest_corpus.py, src/dataset.py, src/metrics.py, experiments/run_self_collected.py.
+- Tests: strengthened tests/test_ingestion.py and tests/test_dataset.py; new tests/test_source_cleaning.py and tests/test_attack_potency.py.
+- Other: .gitignore, README.md, requirements-lock.txt, this report, reports/dataset_source_audit.csv, reports/verification_environment.json; untracking data/corpus.sqlite and 240 data/raw/**/*.txt files.
 
-## Remaining limitations
+README now describes actual preprocessing (no lemmatization), the two main defenses (trimming is a utility), incomplete local data, the new potency metric, normalization and rebuild path. Old results remain explicitly historical. Searches found no production use of prepare_100_document_corpus. Old counts remain only in historical records, the explicit rebuild-required manifest, and the separate 20 Newsgroups pipeline. Core PLSA EM, tempered EM, folding-in, alignment, retrieval and poisoning generators were not modified.
 
-The live 320-document rebuild is blocked by the 16 sources listed above. Review multi-column reading order and OCR quality before accepting replacements. Prefix normalization favors the opening sections of a magazine; a future section-based policy could reduce that bias but would need a separate evaluation. Same-URL remote changes require `--force`; the offline loader checks the saved metadata snapshot rather than contacting the Sheet. The unchanged ten-document poison budget represents a smaller fraction of 256 clean training documents. PLSA EM, tempered EM, folding-in, alignment, attacks, defenses and retrieval algorithms were not changed. The separate 20 Newsgroups experiments keep their own configuration.
+## Rebuild and remaining risks
+
+After fixing source URLs or providing OCR-backed PDFs, run:
+
+~~~bash
+python -m src.ingest_corpus --metadata data/metadata.csv --audit-path reports/dataset_source_audit.csv
+python -m src.dataset
+~~~
+
+Use --force for changed content at an unchanged URL. To reproduce the isolated audit, add --db-path data/rebuild/corpus.sqlite --raw-dir data/rebuild/raw. Keep full experiments blocked until all categories have 80 valid documents. Source repair and visual checking of OCR/multi-column text remain prerequisites for final scientific results. The code does not accept missing or unusable sources. The ten-document poison budget is unchanged and represents a smaller training fraction.

@@ -14,57 +14,99 @@ import numpy as np
 import scipy.sparse as sp
 
 
-def clean_bitscan_pages(pages: List[str]) -> str:
-    """Remove identifiable PDF furniture, preserving prose and campus vocabulary.
+# Restricted vocabulary for observed publication furniture, not campus prose.
+_BITSCAN_LAYOUT_WORDS = set("bits bitscan pilani hyderabad goa campus k birla institute of technology and science semester sem notes issue no i ii iii jan january june jun july jul dec december august aug september sept october november march april may february feb".split())
 
-    Repetition alone is insufficient: only short lines at page edges repeated
-    on at least half the pages (minimum two) are treated as running furniture.
-    TOC entries need dot leaders; editorial prose is deliberately retained.
+
+def _bitscan_layout_signature(line):
+    """Canonicalize observed page-edge furniture, including changing page numbers."""
+    words = re.findall(r"[a-z]+", line.casefold())
+    if not words or len(words) > 22 or not set(words) <= _BITSCAN_LAYOUT_WORDS:
+        return None
+    if not set(words) & {"bits", "bitscan", "campus", "semester", "institute"}:
+        return None
+    # Only boundary page numbers vary; retain issue numbers and year ranges.
+    line = re.sub(r"^\s*[-\u2013]?\s*\d{1,3}\s*(?:[-\u2013]\s*|\s+)", "", line)
+    line = re.sub(r"\s+\d{1,3}\s*$", "", line)
+    return re.sub(r"[\W_]+", " ", line.casefold()).strip()
+
+
+def clean_bitscan_pages(pages: List[str]) -> str:
+    """Remove observed furniture; retain prose, paragraph and page boundaries.
+
+    A restricted layout signature must recur at page edges on two or more pages.
+    Changing boundary page numbers are ignored, while years/issues remain part
+    of the signature. No substantive campus terms are globally blacklisted.
+    Form feeds preserve pages for deterministic model-section selection.
     """
-    lines_by_page = [
-        [re.sub(r"[ \t]+", " ", line).strip() for line in page.splitlines()
-         if line.strip()]
-        for page in pages
-    ]
+    lines_by_page = [[re.sub(r"[ \t]+", " ", line).strip()
+                      for line in page.splitlines()] for page in pages]
     edges = Counter()
     for lines in lines_by_page:
-        edges.update(set(line.casefold() for line in lines[:2] + lines[-2:]
-                         if len(line.split()) <= 8
-                         and not re.search(r"[.!?]$", line)
-                         and not re.search(r"\b(students?|faculty)\b", line, re.I)))
-    repeated = {line for line, count in edges.items()
-                if count >= max(2, (len(pages) + 1) // 2)}
+        nonempty = [line for line in lines if line]
+        signatures = {_bitscan_layout_signature(line)
+                      for line in nonempty[:3] + nonempty[-3:]}
+        edges.update(signature for signature in signatures if signature)
+    repeated = {signature for signature, count in edges.items() if count >= 2}
     furniture = re.compile(
         r"(?:bitscan(?:\s*[-:|]?\s*\d+)?|(?:page\s+)?\d+(?:\s+of\s+\d+)?|"
         r"issue\s*(?:no\.?\s*)?\d+|"
-        r"(?:[iv12]+\s+)?semester\s*(?:[iv12]+)?\s*[,/-]?\s*\d{4}[-–/]\d{2,4}|"
-        r"(?:table of )?contents|editorial (?:board|team)|"
-        r"(?:printed|published|edited) by\s*:.*|"
-        r"(?:email|e-mail|phone|fax|contact us)\s*:.*)",
-        re.IGNORECASE,
-    )
+        r"(?:[iv12]+\s+)?semester\s*(?:[iv12]+)?\s*[,/-]?\s*\d{4}[-\u2013/]\d{2,4}|"
+        r"editorial (?:board|team)|(?:printed|published|edited) by\s*:.*|"
+        r"(?:email|e-mail|phone|fax|contact us)\s*:.*)", re.IGNORECASE)
     cleaned_pages = []
     for lines in lines_by_page:
+        nonempty_indices = [i for i, line in enumerate(lines) if line]
+        edge_indices = set(nonempty_indices[:3] + nonempty_indices[-3:])
         kept = []
         for index, line in enumerate(lines):
-            at_edge = index < 2 or index >= len(lines) - 2
-            layout_line = (
-                len(line.split()) <= 18
-                and re.search(r"\bbitscan\b", line, re.I)
-                and not re.search(r"\b(students?|faculty|research|events?|welcome)\b", line, re.I)
-                and re.fullmatch(
-                    r"[\d\s,.:|/–-]*(?:(?:bitscan|bits|pilani|hyderabad|goa|campus|"
-                    r"k|birla|semester|sem|issue|notes|no|i|ii|jan|june|july|dec|"
-                    r"january|december)[\d\s,.:|/–-]*)+", line, re.I)
-            )
             if (furniture.fullmatch(line)
-                    or re.fullmatch(r".+\.{3,}\s*\d+(?:[-–]\d+)?", line)
-                    or layout_line
-                    or (at_edge and line.casefold() in repeated)):
+                    or re.fullmatch(r".+\.{3,}\s*\d+(?:[-\u2013]\d+)?", line)
+                    or (index in edge_indices and _bitscan_layout_signature(line) in repeated)):
                 continue
             kept.append(line)
-        cleaned_pages.append("\n".join(kept))
-    return "\n\n".join(page for page in cleaned_pages if page).strip()
+        cleaned_pages.append(re.sub(r"\n{3,}", "\n\n", "\n".join(kept)).strip())
+    return "\f".join(cleaned_pages)
+
+
+_WIKINEWS_NONARTICLE_SECTIONS = {
+    "source", "sources", "references", "related news", "related stories", "related",
+    "related wikinews",
+    "external link", "external links", "sister links", "see also",
+}
+_WIKINEWS_DATE = re.compile(
+    r"(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+"
+    r"(?:January|February|March|April|May|June|July|August|September|October|November|December)"
+    r"\s+\d{1,2},\s+\d{4}")
+
+
+def clean_wikinews_text(text: str) -> str:
+    """Remove observed metadata/sections, never individual journalistic words.
+
+    API headings and HTML headings (serialized to the same syntax) delimit
+    sections. Skip only named non-article sections and their subsections;
+    resume at the next peer article heading, preserving interviews and prose.
+    """
+    cleaned = []
+    skipped_level = None
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not cleaned and _WIKINEWS_DATE.fullmatch(stripped):
+            continue
+        heading = re.fullmatch(r"(={2,6})\s*(.*?)\s*\1", stripped)
+        if heading:
+            level, title = len(heading[1]), heading[2].casefold()
+            if skipped_level is not None and level <= skipped_level:
+                skipped_level = None
+            if title in _WIKINEWS_NONARTICLE_SECTIONS and skipped_level is None:
+                skipped_level = level
+        if skipped_level is not None:
+            continue
+        if stripped == "Have an opinion on this story? Share it!":
+            continue
+        if stripped or cleaned:
+            cleaned.append(line)
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(cleaned)).strip()
 
 # Standard English stopwords (self-contained to avoid external download dependencies)
 DEFAULT_STOPWORDS: Set[str] = {

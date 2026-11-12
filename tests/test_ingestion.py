@@ -191,7 +191,7 @@ def test_version_change_and_text_corruption_are_not_cached(tmp_path, monkeypatch
     monkeypatch.setattr(ingest, "fetch_source_text", fetch)
     ingest.ingest_corpus(tmp_path / "raw", db, metadata_rows=[row()], delay=0)
     with sqlite3.connect(db) as conn:
-        conn.execute("UPDATE documents SET extraction_version='legacy'")
+        conn.execute("UPDATE documents SET extraction_version='bitscan-v1'")
     with pytest.raises(ValueError, match="Stale"):
         load_corpus_from_sqlite(db)
     ingest.ingest_corpus(tmp_path / "raw", db, metadata_rows=[row()], delay=0)
@@ -222,3 +222,20 @@ def test_legacy_migration_backs_up_and_refetches(tmp_path, monkeypatch):
     assert "fresh" in load_corpus_from_sqlite(db)[0]["raw_text"]
     with sqlite3.connect(str(db) + ".legacy.bak") as conn:
         assert conn.execute("SELECT raw_text FROM documents").fetchone()[0] == "old campus contents"
+
+
+def test_text_free_audit_includes_failed_source_type(tmp_path, monkeypatch):
+    def fail(*args, **kwargs):
+        raise extract.ExtractionError("PDF needs OCR", word_count=7)
+    monkeypatch.setattr(ingest, "fetch_source_text", fail)
+    audit = tmp_path / "audit.csv"
+    report = ingest.ingest_corpus(tmp_path / "raw", tmp_path / "corpus.sqlite",
+                                 metadata_rows=[row()], delay=0, audit_path=audit)
+    with audit.open(encoding="utf-8", newline="") as handle:
+        source = next(csv.DictReader(handle))
+    assert source["source_type"] == "pdf" and source["ingestion_status"] == "failed"
+    assert source["extracted_word_count"] == "7" and source["failure_reason"] == "PDF needs OCR"
+    assert source["extraction_version"] == extract.EXTRACTION_VERSION
+    assert "raw_text" not in source and "model_text" not in source
+    assert report["metadata_rows"] == 1
+    assert report["categories"] == {"Campus": {"accepted": 0, "failed": 1}}

@@ -17,6 +17,34 @@ from src.source_extract import EXTRACTION_VERSION, validate_extraction
 
 DEFAULT_CATEGORIES = ("Campus", "Politics", "Sports", "Technology")
 DEFAULT_LENGTH_PERCENTILE = 90
+_CAMPUS_FRONT_MATTER = re.compile(
+    r"^(?:editorial|from\s+the\s+editor|(?:table\s+of\s+)?contents|"
+    r"in\s+pursuit\s+of\s+excellence|dear\s+readers[,:]?)$", re.I)
+
+
+def select_campus_body_page(text):
+    """First substantial non-front-matter page, retaining a coherent page section.
+
+    Observed Pilani/Goa editorials and the Pilani alumni continuation are skipped
+    only for model selection. Full extraction, including editorials, is retained.
+    Short covers/illustration pages cannot become the document representation.
+    This is a fixed source-format rule; it learns nothing from test statistics.
+    """
+    for index, page in enumerate(text.split("\f"), 1):
+        opening = [line.strip() for line in page.splitlines() if line.strip()][:12]
+        front_matter = any(_CAMPUS_FRONT_MATTER.fullmatch(line) for line in opening)
+        # Goa columns can precede the two-line "from the" / "editor" heading
+        # with a continuation paragraph; match adjacent heading lines anywhere
+        # in the opening, rather than only at character zero.
+        front_matter |= any(_CAMPUS_FRONT_MATTER.fullmatch(left + " " + right)
+                            for left, right in zip(opening, opening[1:]))
+        joined_opening = " ".join(opening)
+        front_matter |= bool(re.match(r"from\s+the\s+editor\b", joined_opening, re.I))
+        front_matter |= joined_opening.casefold().startswith(
+            "to our alumni and students, we convey our")
+        if len(page.split()) >= 50 and not front_matter:
+            return page, index
+    raise ValueError("Campus PDF has no substantial non-front-matter page; review its text")
 
 
 def normalize_document_length(text, max_words):
@@ -155,8 +183,12 @@ def prepare_document_corpus(
     if not isinstance(length_limit, int) or length_limit < 1:
         raise ValueError("max_document_words must be a positive integer")
     for doc in selected_docs:
+        model_source = doc["raw_text"]
+        doc["model_page"] = None
+        if doc["category"] == "Campus" and doc["source_type"] == "pdf":
+            model_source, doc["model_page"] = select_campus_body_page(model_source)
         doc["model_text"] = normalize_document_length(
-            TextPreprocessor.clean_text(doc["raw_text"]), length_limit)
+            TextPreprocessor.clean_text(model_source), length_limit)
         doc["model_word_count"] = len(doc["model_text"].split())
     train_texts = [d["model_text"] for d in train_docs]
     test_texts = [d["model_text"] for d in test_docs]
@@ -191,6 +223,7 @@ def prepare_document_corpus(
             "split": d["split"],
             "extracted_word_count": d["word_count"],
             "model_word_count": d["model_word_count"],
+            "model_page": d["model_page"],
             "tokens": tokens,
             "cleaned_text": " ".join(tokens),
         })
@@ -212,7 +245,9 @@ def prepare_document_corpus(
         "min_df": 2,
         "max_df_ratio": 0.85,
         "length_normalization": {
-            "strategy": "sentence_bounded_prefix",
+            "strategy": "campus_body_page_then_sentence_bounded_prefix",
+            "campus_page_selection": "first_non_front_matter_page_with_at_least_50_words",
+            "other_sources": "sentence_bounded_prefix",
             "max_words": length_limit,
             "reference": "explicit" if max_document_words is not None else "non_campus_training",
             "percentile": length_percentile,
