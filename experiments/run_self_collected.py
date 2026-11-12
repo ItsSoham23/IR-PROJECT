@@ -1,16 +1,16 @@
 """
 Full Experimental Pipeline and Adversarial Stress Test on Self-Collected Corpus.
 
-Dataset: 100 documents across 4 categories ('Campus', 'Politics', 'Sports', 'Technology')
-- 80 training documents (20 per category)
-- 20 test documents (5 per category)
+Dataset: 256 selected documents from 320 candidates across 4 categories ('Campus', 'Politics', 'Sports', 'Technology')
+- 204 training documents (51 per category)
+- 52 test documents (13 per category)
 
 Conditions:
-- Condition A: Clean Baseline (80 docs)
-- Condition B_repeat: 80 clean + 10 keyword repetition poison documents targeting Category 0
-- Condition B_bridge: 80 clean + 10 bridging poison documents (Category 0 + Category 1)
-- Condition C: 80 clean + 10 random vocabulary control documents
-- Defenses on B: Deduplication filtering, Tempered EM (beta=0.85), Likelihood trimming
+- Condition A: Clean Baseline (204 docs)
+- Condition B_repeat: 204 clean + 10 keyword repetition poison documents targeting Category 0
+- Condition B_bridge: 204 clean + 10 bridging poison documents (Category 0 + Category 1)
+- Condition C: 204 clean + 10 random vocabulary control documents
+- Defenses on B: Deduplication filtering, Tempered EM (beta=0.85)
 
 Multi-seed evaluation across 5 seeds with Bootstrap 95% Confidence Intervals,
 metric plots, and complete results logging.
@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 import numpy as np
 import matplotlib.pyplot as plt
 
-from src.dataset import prepare_100_document_corpus
+from src.dataset import prepare_document_corpus, save_experiment_manifest
 from src.plsa import PLSA
 from src.align import TopicAligner
 from src.baselines import LSIBaseline, TFIDFBaseline
@@ -62,11 +62,11 @@ def bootstrap_ci(data: List[float], n_boot: int = 1000, ci: float = 0.95) -> Tup
 def run_self_collected_experiments(
     seeds: List[int] = [42, 101, 202, 303, 404],
     n_topics: int = 4,
-    output_dir: str = "results",
+    output_dir: str = "results/dataset_320",
 ):
     os.makedirs(output_dir, exist_ok=True)
     print("=" * 85)
-    print("EXPERIMENTS ON SELF-COLLECTED CORPUS (100 DOCS, 4 CATEGORIES)")
+    print("EXPERIMENTS ON SELF-COLLECTED CORPUS (256 SELECTED DOCS, 4 CATEGORIES)")
     print("=" * 85)
 
     condition_names = [
@@ -91,9 +91,10 @@ def run_self_collected_experiments(
     for seed_idx, seed in enumerate(seeds):
         print(f"\n>>> Running Seed {seed_idx + 1}/{len(seeds)} (Seed: {seed}) <<<")
         # Prepare stratified split for this seed
-        X_train, X_test, y_train, y_test, vocab, train_docs, test_docs = prepare_100_document_corpus(
+        X_train, X_test, y_train, y_test, vocab, train_docs, test_docs = prepare_document_corpus(
             seed=seed, output_dir=os.path.join("data", "processed")
         )
+        save_experiment_manifest(os.path.join(output_dir, f"self_collected_dataset_seed_{seed}.json"))
         with open(os.path.join("data", "processed", "cleaned_corpus.json"), encoding="utf-8") as handle:
             corpus_tokens = [item["tokens"] for item in json.load(handle)]
 
@@ -197,16 +198,15 @@ def run_self_collected_experiments(
         # Attack potency
         non_target_mask = (y_test != target_cat_idx)
         potency_rep = compute_attack_potency(
-            plsa_b_rep.p_w_z,
-            target_topic,
-            target_word_indices,
-            p_z_test_b,
-            baseline_test_p_z_d=p_z_test_a,
+            plsa_b_rep, plsa_a,
+            aligner=aligner_b_rep, baseline_aligner=aligner_a,
+            target_class_idx=target_cat_idx,
+            injected_word_indices=target_word_indices,
+            test_p_z_d=p_z_test_b, baseline_test_p_z_d=p_z_test_a,
             non_target_mask=non_target_mask,
-            train_ll=plsa_b_rep.final_log_likelihood_,
-            baseline_train_ll=plsa_a.final_log_likelihood_,
+            evaluation_counts=X_train,
         )
-        potency_records["B_repeat"].append(potency_rep)
+        potency_records["B_repeat"].append({"seed": seed, **potency_rep})
 
         # -------------------------------------------------------------------
         # 3. Condition B (Poison - Bridging Attack)
@@ -255,16 +255,15 @@ def run_self_collected_experiments(
         })
 
         potency_br = compute_attack_potency(
-            plsa_b_br.p_w_z,
-            target_topic,
-            target_word_indices,
-            p_z_test_br,
-            baseline_test_p_z_d=p_z_test_a,
+            plsa_b_br, plsa_a,
+            aligner=aligner_b_br, baseline_aligner=aligner_a,
+            target_class_idx=target_cat_idx,
+            injected_word_indices=target_word_indices,
+            test_p_z_d=p_z_test_br, baseline_test_p_z_d=p_z_test_a,
             non_target_mask=non_target_mask,
-            train_ll=plsa_b_br.final_log_likelihood_,
-            baseline_train_ll=plsa_a.final_log_likelihood_,
+            evaluation_counts=X_train,
         )
-        potency_records["B_bridge"].append(potency_br)
+        potency_records["B_bridge"].append({"seed": seed, **potency_br})
 
         # -------------------------------------------------------------------
         # 4. Condition C (Random Control)
@@ -307,16 +306,15 @@ def run_self_collected_experiments(
         })
 
         potency_c = compute_attack_potency(
-            plsa_c.p_w_z,
-            target_topic,
-            target_word_indices,
-            p_z_test_c,
-            baseline_test_p_z_d=p_z_test_a,
+            plsa_c, plsa_a,
+            aligner=aligner_c, baseline_aligner=aligner_a,
+            target_class_idx=target_cat_idx,
+            injected_word_indices=target_word_indices,
+            test_p_z_d=p_z_test_c, baseline_test_p_z_d=p_z_test_a,
             non_target_mask=non_target_mask,
-            train_ll=plsa_c.final_log_likelihood_,
-            baseline_train_ll=plsa_a.final_log_likelihood_,
+            evaluation_counts=X_train,
         )
-        potency_records["Condition_C"].append(potency_c)
+        potency_records["Condition_C"].append({"seed": seed, **potency_c})
 
         # -------------------------------------------------------------------
         # 5. Defense: Deduplication Filter on Condition B
@@ -508,14 +506,19 @@ def run_self_collected_experiments(
     print("\n" + "=" * 90)
     print("ADVERSARIAL POTENCY QUANTITIES (MEAN OVER 5 SEEDS)")
     print("=" * 90)
-    print(f"{'Condition':<30} | {'Injected Word Mass':<20} | {'Test Drift to Target':<22} | {'Delta LL':<16}")
+    print(f"{'Condition':<30} | {'Injected Word Mass':<20} | {'Test Drift to Target':<22} | {'Delta LL/token':<16}")
     print("-" * 90)
     for k, pot_list in potency_records.items():
         masses = [p["injected_words_target_mass"] for p in pot_list]
         shifts = [p["target_prob_shift"] for p in pot_list]
-        dlls = [p["delta_log_likelihood"] for p in pot_list]
-        print(f"{k:<30} | {np.mean(masses):<20.4f} | {np.mean(shifts):<22.4f} | {np.mean(dlls):<16.1f}")
+        dlls = [p["delta_eval_ll_per_token"] for p in pot_list]
+        print(f"{k:<30} | {np.mean(masses):<20.4f} | {np.mean(shifts):<22.4f} | {np.mean(dlls):<16.6f}")
     print("=" * 90)
+
+    # Persist corrected potency separately from historical condition summaries.
+    with open(os.path.join(output_dir, "attack_potency.json"), "w", encoding="utf-8") as handle:
+        json.dump({"evaluation_corpus": "clean_training", "likelihood_unit": "nats_per_token",
+                   "inference": "fold_in_both_models", "runs": potency_records}, handle, indent=2)
 
     # Save JSON summary
     summary_path = os.path.join(output_dir, "self_collected_summary.json")

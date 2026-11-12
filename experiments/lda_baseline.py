@@ -1,9 +1,9 @@
 """
 Step 1 – PLSA vs. LDA (Gensim) Baseline Comparison.
 
-Trains Gensim LDA on the same 80‑doc training split under all three
+Trains Gensim LDA on the same 204-doc training split under all three
 adversarial conditions (A – clean, B – bridging & repeat, C – random control),
-evaluates on the 20‑doc held‑out test set, and compares results against the
+evaluates on the 52-doc held‑out test set, and compares results against the
 previously computed PLSA metrics.
 
 Usage
@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 from gensim.corpora import Dictionary
 from gensim.models import LdaModel
 
-from src.dataset import prepare_100_document_corpus
+from src.dataset import prepare_document_corpus, save_experiment_manifest
 from src.plsa import PLSA
 from src.align import TopicAligner
 from src.attack import AdversarialPoisonGenerator
@@ -73,7 +73,7 @@ def _lda_perplexity(lda, bow_corpus):
 def run_lda_experiments(
     seeds=(42, 101, 202, 303, 404),
     n_topics=4,
-    output_dir="results",
+    output_dir="results/dataset_320",
 ):
     os.makedirs(output_dir, exist_ok=True)
     print("=" * 85)
@@ -104,7 +104,8 @@ def run_lda_experiments(
 
         # ── data ───────────────────────────────────────────────────
         X_train, X_test, y_train, y_test, vocab, train_docs, test_docs = \
-            prepare_100_document_corpus(seed=seed, output_dir="data/processed")
+            prepare_document_corpus(seed=seed, output_dir="data/processed")
+        save_experiment_manifest(os.path.join(output_dir, f"lda_dataset_seed_{seed}.json"))
         with open("data/processed/cleaned_corpus.json", encoding="utf-8") as handle:
             corpus_tokens = [item["tokens"] for item in json.load(handle)]
 

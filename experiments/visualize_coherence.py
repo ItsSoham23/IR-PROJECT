@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 
 
 def plot_coherence(
-    input_path="results/poison_budget_curve.json",
-    output_path="results/coherence_curve.png",
+    input_path="results/dataset_320/poison_budget_curve.json",
+    output_path="results/dataset_320/coherence_curve.png",
 ):
     with open(input_path, encoding="utf-8") as handle:
         payload = json.load(handle)

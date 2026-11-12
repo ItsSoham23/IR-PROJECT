@@ -10,7 +10,7 @@ import numpy as np
 from src.align import TopicAligner
 from src.attack import AdversarialPoisonGenerator
 from src.coherence import npmi
-from src.dataset import prepare_100_document_corpus
+from src.dataset import prepare_document_corpus, save_experiment_manifest
 from src.metrics import compute_classification_metrics
 from src.plsa import PLSA
 from src.preprocess import TextPreprocessor
@@ -41,9 +41,10 @@ def _evaluate(model, X_test, y_test, y_train, clean_count, vocab, corpus_tokens)
 def run_poison_budget(
     budgets=(2, 5, 10, 15, 20),
     seed=42,
-    output_path="results/poison_budget_curve.json",
+    output_path="results/dataset_320/poison_budget_curve.json",
 ):
-    X_train, X_test, y_train, y_test, vocab, _, _ = prepare_100_document_corpus(seed=seed)
+    X_train, X_test, y_train, y_test, vocab, _, _ = prepare_document_corpus(seed=seed)
+    save_experiment_manifest(output_path + ".dataset.json")
     preprocessor = TextPreprocessor(min_df=2, max_df_ratio=0.85)
     preprocessor.vocab_ = vocab
     preprocessor.word_to_idx_ = {word: index for index, word in enumerate(vocab)}

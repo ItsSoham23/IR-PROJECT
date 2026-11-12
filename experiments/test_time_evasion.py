@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 import numpy as np
 
 from src.align import TopicAligner
-from src.dataset import prepare_100_document_corpus
+from src.dataset import prepare_document_corpus, save_experiment_manifest
 from src.evasion import perturb_document
 from src.metrics import compute_classification_metrics
 from src.plsa import PLSA
@@ -21,9 +21,10 @@ MODEL_RESTARTS = 5
 def run_evasion(
     swap_counts=(0, 1, 2, 3),
     seed=42,
-    output_path="results/evasion_summary.json",
+    output_path="results/dataset_320/evasion_summary.json",
 ):
-    X_train, X_test, y_train, y_test, vocab, _, test_docs = prepare_100_document_corpus(seed=seed)
+    X_train, X_test, y_train, y_test, vocab, _, test_docs = prepare_document_corpus(seed=seed)
+    save_experiment_manifest(output_path + ".dataset.json")
     preprocessor = TextPreprocessor(min_df=2, max_df_ratio=0.85)
     preprocessor.vocab_ = vocab
     preprocessor.word_to_idx_ = {word: index for index, word in enumerate(vocab)}
@@ -37,7 +38,7 @@ def run_evasion(
     for swaps in swap_counts:
         tokens = [
             perturb_document(
-                preprocessor.tokenize(doc["raw_text"]),
+                preprocessor.tokenize(doc["model_text"]),
                 swaps,
                 target_words,
                 seed + index,

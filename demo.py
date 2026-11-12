@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 
 from src.align import TopicAligner
 from src.attack import AdversarialPoisonGenerator
-from src.dataset import prepare_100_document_corpus
+from src.dataset import prepare_document_corpus
 from src.defense import DefenseFilter
 from src.metrics import compute_classification_metrics
 from src.plsa import PLSA
@@ -28,14 +28,17 @@ def main() -> None:
     print("=" * 68)
     print("PLSA LIVE DEMO")
     print("=" * 68)
-    print("Preparing the included local corpus...")
+    print("Preparing an explicit 80-document demo subset (64 train / 16 test)...")
 
     demo_output = ROOT / "data" / "demo_processed"
     demo_output.mkdir(parents=True, exist_ok=True)
     demo_db = demo_output / "corpus.sqlite"
     shutil.copy2(ROOT / "data" / "corpus.sqlite", demo_db)
-    X_train, X_test, y_train, y_test, vocab, _, _ = prepare_100_document_corpus(
+    shutil.copy2(ROOT / "data" / "metadata.csv", demo_output / "metadata.csv")
+    X_train, X_test, y_train, y_test, vocab, _, _ = prepare_document_corpus(
         seed=42,
+        target_docs_per_cat=20,
+        train_docs_per_cat=16,
         db_path=str(demo_db),
         output_dir=str(demo_output),
     )

@@ -11,12 +11,12 @@
 This project provides a complete, from-scratch implementation of **Probabilistic Latent Semantic Analysis (PLSA)** via the Expectation-Maximization (EM) algorithm (Hofmann, 1999) using NumPy and SciPy. We evaluate PLSA under both standard retrieval/topic-modeling conditions and **adversarial poisoning stress tests** (inspired by Mei & Zhu, 2015), examining topic stability, held-out classification Macro-F1, perplexity, and IR ranking metrics (Precision@K, MAP, NDCG@K).
 
 ### Experimental Conditions
-- **Condition A (Clean Baseline):** Clean training set (80 docs across 4 balanced categories: Campus, Politics, Sports, Technology).
-- **Condition B (Adversarial Poisoning):** 80 clean docs + 10 injected poison documents targeting a specific category topic:
+- **Condition A (Clean Baseline):** Clean training set (204 docs across 4 balanced categories: Campus, Politics, Sports, Technology).
+- **Condition B (Adversarial Poisoning):** 204 clean docs + 10 injected poison documents targeting a specific category topic:
   - *B_repeat:* Keyword repetition of top target words.
   - *B_bridge:* Semantic bridging mixing target category with a confuser category.
-- **Condition C (Random Control):** 80 clean docs + 10 random-word documents (drawn uniformly from training vocabulary) to control for corpus size expansion.
-- **Defenses:** Cosine deduplication filtering (`sim > 0.75`), Tempered EM ($\beta = 0.85$), and per-document likelihood trimming.
+- **Condition C (Random Control):** 204 clean docs + 10 random-word documents (drawn uniformly from training vocabulary) to control for corpus size expansion.
+- **Defenses:** Cosine deduplication filtering (`sim > 0.75`), Tempered EM ($\beta = 0.85$). Likelihood trimming is an available utility, not a main experimental condition.
 
 ---
 
@@ -25,27 +25,27 @@ This project provides a complete, from-scratch implementation of **Probabilistic
 ```
 IR-PROJECT/
 ├── README.md                          # Project documentation and quickstart
-├── requirements.txt                   # NumPy, SciPy, scikit-learn, pytest, matplotlib, bs4
+├── requirements.txt                   # NumPy, SciPy, scikit-learn, pytest, matplotlib, bs4, PyMuPDF
 ├── .gitignore                         # Data artifacts, cache, and results filtering
 ├── data/
-│   ├── raw/                           # 120 ingested documents (flat & by category)
-│   │   ├── Campus/                    # 30 docs from BITS Pilani portals
-│   │   ├── Politics/                  # 30 docs from Wikinews
-│   │   ├── Sports/                    # 30 docs from Wikinews
-│   │   └── Technology/                # 30 docs from Wikinews
+│   ├── raw/                           # Ignored local outputs from accepted candidates
+│   │   ├── Campus/                    # 80 BITScan candidates; 64 accepted and selected
+│   │   ├── Politics/                  # 80 valid Wikinews candidates; 64 selected
+│   │   ├── Sports/                    # 80 valid Wikinews candidates; 64 selected
+│   │   └── Technology/                # 80 valid Wikinews candidates; 64 selected
 │   ├── processed/                     # splits.json, vocabulary, count matrices
-│   ├── metadata.csv                   # Tracking metadata from Google Sheet
-│   └── corpus.sqlite                  # SQLite database tracking corpus metadata
+│   ├── metadata.csv                   # Authoritative registry of 320 candidate sources
+│   └── corpus.sqlite                  # Ignored local database; must be built from current metadata
 ├── src/
 │   ├── __init__.py
-│   ├── ingest_corpus.py               # Ingestion script scraping Wikinews & BITS portal
+│   ├── ingest_corpus.py               # Versioned ingestion of Wikinews, HTML & PDF sources
 │   ├── dataset.py                     # Selection, 80/20 stratified splitting, vocabulary
-│   ├── preprocess.py                  # Tokenization, lemmatization, vocabulary builder
+│   ├── preprocess.py                  # Cleaning, tokenization, stopwords; no lemmatization
 │   ├── plsa.py                        # Core EM, Tempered EM, Folding-In, Perplexity
 │   ├── align.py                       # Hungarian alignment (linear_sum_assignment)
 │   ├── metrics.py                     # Macro-P/R/F1, Purity, NMI, Perplexity, Potency
 │   ├── attack.py                      # Keyword repetition & bridging poison generators
-│   ├── defense.py                     # Deduplication, outlier filtering, MAP smoothing
+│   ├── defense.py                     # Deduplication and likelihood-trimming utilities
 │   ├── retrieval.py                   # Query folding-in, ranking, P@K, MAP, NDCG
 │   ├── evaluate.py                    # Shared PLSA/LDA evaluation
 │   ├── coherence.py                   # NPMI topic coherence
@@ -54,8 +54,8 @@ IR-PROJECT/
 │   └── baselines.py                   # LSI (TruncatedSVD), TF-IDF + KMeans
 ├── experiments/
 │   ├── stage0_20news.py               # Mini-replication on 20 Newsgroups
-│   ├── run_conditions.py              # Synthetic stress-test pipeline
-│   ├── run_self_collected.py          # Full 5-seed evaluation on 100-doc self-collected corpus
+│   ├── run_conditions.py              # Separate 20 Newsgroups stress-test pipeline
+│   ├── run_self_collected.py          # Full 5-seed evaluation on the 256-document corpus
 │   ├── lda_baseline.py                # Gensim LDA vs PLSA comparison
 │   ├── poison_budget.py               # Poison-budget sensitivity sweep
 │   ├── test_time_evasion.py           # Folding-in evasion experiment
@@ -65,9 +65,9 @@ IR-PROJECT/
 │   ├── test_normalization.py          # Verifies proper probability distributions
 │   └── test_synthetic_recovery.py     # Verifies topic recovery on synthetic topic mixtures
 ├── results/
-│   ├── condition_comparison.png       # Comparison bar chart of Macro-F1 and MAP
-│   ├── self_collected_summary.json    # Complete metrics and bootstrap CIs
-│   └── condition_results.json         # Raw experiment run records
+│   ├── condition_comparison.png       # Historical comparison figure
+│   ├── self_collected_summary.json    # Historical metrics and bootstrap CIs
+│   └── condition_results.json         # Separate 20 Newsgroups run records
 └── reports/
     └── status_update_draft.md         # 4-page intermediate status update report draft
 ```
@@ -90,7 +90,16 @@ source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
+# To reproduce the tested package versions on CPython 3.13.7 / Windows:
+pip install -r requirements-lock.txt
 ```
+
+`requirements.txt` remains the supported broad dependency list.
+`requirements-lock.txt` captures the verification environment, including transitive
+packages. [The environment record](reports/verification_environment.json) records
+Python, OS and package versions. Fixed seeds support repeatability within a tested
+environment; identical numerical results across platforms/library versions have
+not been established.
 
 ---
 
@@ -99,7 +108,7 @@ pip install -r requirements.txt
 ```bash
 python -m pytest -v tests/
 ```
-All **9 tests pass**:
+The suite covers the model, ingestion, dataset, observed source-pattern, and attack-potency regression tests:
 - [x] Monotonic training log-likelihood across EM iterations.
 - [x] Proper normalization of $P(z|d,w)$, $P(w|z)$, $P(d|z)$, and $P(z)$.
 - [x] Accurate topic recovery on synthetic topic mixture matrices ($\ge 0.85$ Macro-F1).
@@ -111,7 +120,8 @@ All **9 tests pass**:
 
 ### Quick offline live demo
 
-Use the included corpus for a short demonstration. This runs the clean
+After rebuilding the corpus, use an explicit 20-document-per-category subset
+(64 train / 16 test total) for a short demonstration. This runs the clean
 baseline, keyword-repetition poisoning, bridging poisoning, random-control
 condition, deduplication defense, and tempered-EM defense. It also evaluates
 held-out documents and prints the learned top words:
@@ -121,15 +131,134 @@ held-out documents and prints the learned top words:
 python demo.py
 ```
 
-The demo is offline and normally finishes in under a minute. It does not
+The demo is offline after ingestion and uses a smaller subset for speed. It does not
 download the 20 Newsgroups dataset or run the longer five-seed experiments.
 It rebuilds its seed-42 artifacts in `data/demo_processed/`, keeping them
 separate from experiment outputs.
 
 ### Ingest Corpus from Google Sheets
 ```bash
-python src/ingest_corpus.py
+python -m src.ingest_corpus
+python -m src.dataset
 ```
+
+### Corpus rebuild and validation
+
+The registry contains **320 candidate sources**, 80 each for Campus, Politics,
+Sports and Technology. The current completed audit accepts 304 and rejects 16
+Campus PDFs. Model readiness requires at least **64 valid documents in every
+required category**, not success of every candidate URL. Source-level validation
+is unchanged; rejected candidates remain in the audit and never enter the model.
+
+The final balanced corpus has **256 documents: 64/category**, split into
+**204 train / 52 test (51/13 per category)**. Campus uses all 64 valid sources.
+The other categories each use 64 of their 80 valid candidates; the remaining 16
+per category are valid but unused, not failures.
+
+The Campus candidate pool yielded 64 documents that passed predefined source and
+extraction-quality checks. To preserve class balance without introducing
+OCR-derived documents or weakening validation, the final corpus was fixed at 64
+documents per category. Categories with more than 64 valid candidates use a
+predefined deterministic selection rule independent of model results and
+experimental split seeds.
+
+Within each category, sort by extracted word count, breaking ties by document ID,
+and take the centered 64-document subset starting at `(valid_count - 64) // 2`.
+This policy is versioned as `centered_extracted_length_v1`. Membership is selected
+before modeling and does not change with the split seed; only the 51/13 partition
+changes. Documents are never replaced based on model performance. Candidate or
+source-quality changes require an explicit re-audit and a new reviewed manifest.
+The vocabulary uses `min_df=2` and `max_df_ratio=0.85`, fitted only on training text.
+
+Ingestion routes Wikinews through MediaWiki with an article HTML fallback, normal
+pages through BeautifulSoup, and PDF URLs or PDF responses through PyMuPDF.
+Google Drive viewers are converted to download requests; permissions/confirmation
+pages fail with an actionable error instead of entering the corpus. PDF signature,
+text-layer coverage and extraction quality are checked. Empty, garbled and fewer
+than 50-word extractions are rejected; over 5,000 words is reported as unusually
+long. `data/ingestion_report.json` records counts, warnings and failures.
+
+Extraction version `corpus-v2.1` invalidates all earlier cleaning caches.
+BITScan cleaning compares restricted page-edge layout signatures after normalizing
+changing page numbers. It covers observed Pilani, Hyderabad and Goa footer forms,
+including issue/semester punctuation, as well as page numbers, TOC dot leaders
+and contact labels. It preserves
+campus names and substantive editorial prose. PDF text blocks are extracted in a
+deterministic order to reduce column interleaving. Scanned PDFs require OCR; this
+pipeline does not silently run OCR or accept an empty text layer.
+
+Wikinews cleaning removes observed leading publication dates, citation/link
+sections and the opinion invitation. HTML related-story boxes are excluded by
+their observed `.infobox.noprint` structure; article lists and interview prose
+remain. The same text cleaner runs on API and HTML extraction. Words such as
+`said`, source references within prose and meaningful mentions of Wikinews are
+not blacklisted.
+
+Real magazine samples showed that a whole-document prefix often selects the
+editorial. Campus PDFs therefore use the first substantial non-front-matter page
+(at least 50 words), skipping observed editorial/contents openings and a Pilani
+editorial continuation. The selected page is bounded by complete sentences where
+possible. Other sources retain a sentence-bounded prefix. The shared word budget
+is the 90th percentile of cleaned **non-Campus training** documents, excluding the
+magazines from the reference distribution. This retains the ordinary article
+length range while bounding magazine mass. Override `max_document_words` or
+`length_percentile` in `prepare_document_corpus(...)` when needed. The cap is
+recorded per split, and the selected page is recorded per Campus document.
+Full cleaned extraction, including editorial prose, stays in SQLite. The final partial
+sentence is omitted when a preceding sentence fills at least half the budget;
+otherwise a word-boundary prefix handles PDFs without reliable punctuation.
+
+Cached sources must match URL, metadata hash, extraction version and text hash.
+A matching raw filename alone is never trusted. Changed/removed sources are
+invalidated before fetching; interrupted audits cannot be modeled. Failed candidates
+are excluded, and a completed audit needs at least 64 valid sources per category.
+Missing/modified raw files are regenerated from verified SQLite text. Legacy
+SQLite data is backed up to `corpus.sqlite.legacy.bak` on its first migration.
+Use `--force` to refresh same-URL content or force a full re-extraction:
+
+```bash
+python -m src.ingest_corpus --force
+# Or use the reviewed metadata snapshot without contacting the Sheet:
+python -m src.ingest_corpus --metadata data/metadata.csv --audit-path reports/dataset_source_audit.csv
+python -m src.dataset
+```
+
+The version-2 ingestion state separately records `audit_finished`, `model_ready`,
+the candidate metadata hashes, accepted and failed IDs, valid counts, and the
+required minimum. A finished audit with rejected candidates can be model-ready.
+Legacy states using an ambiguous `complete` flag require an explicit ingestion
+rebuild. The loader verifies the snapshot, accepted-ID set, absence of failed IDs,
+URL/metadata/text hashes, extraction version, counts and audit completion.
+
+Preparation rebuilds matrices/vocabulary and writes a version-3 split manifest
+with candidate/valid/selected/unused/failed counts and IDs, selection policy,
+source and selected-corpus fingerprints, split seed and normalization policy.
+If validation fails, `splits.json` is marked `rebuild_required`; old generated
+matrices must not be used. The demo retains its smaller explicit subset.
+The 20 Newsgroups experiments retain their separate dataset configuration.
+
+Generated raw text and SQLite databases remain ignored. Local legacy data was
+preserved as a backup before rebuilding the default database. A fresh clone needs
+ingestion before preparation. The text-free [per-source CSV](reports/dataset_source_audit.csv)
+records extraction outcomes separately from `selected`, `valid_unused`, and
+`rejected` selection statuses. The real seed-42 [manifest](data/processed/splits.json)
+records the frozen 256-source membership and actual training-derived word cap.
+The completed audit's 16 rejected Campus candidates do not block this corpus.
+
+Attack potency now uses each condition's own topic-to-class alignment. Target
+probability drift compares the same semantic class across models. Both frozen
+models fold in the identical clean-training count matrix X for likelihood:
+
+`L(X; M) = sum_dw X_dw * log(sum_k theta_M(d,k) * phi_M(k,w)) / sum_dw X_dw`
+
+`delta_eval_ll_per_token = L(X; condition) - L(X; baseline)` is in nats/token;
+negative values mean worse fit to the shared corpus. It is an in-sample diagnostic,
+not a held-out generalization score. Raw objectives from clean and augmented
+training corpora are never subtracted. Corrected results are written to
+`results/dataset_320/attack_potency.json` after an experiment run.
+
+See [the dataset update audit](reports/dataset_update_audit.md) for observed
+word counts, current source failures and rebuild status.
 
 ### Run Stage 0 Mini-Replication (20 Newsgroups)
 ```bash
@@ -151,19 +280,28 @@ python experiments/visualize_evasion.py
 python experiments/visualize_coherence.py
 ```
 
-The stretch scripts write JSON summaries and PNG figures under `results/`.
+The self-collected and stretch scripts write new JSON summaries, dataset manifests,
+and PNG figures under `results/dataset_320/`. This existing directory name is
+retained for compatibility; it refers to the 320-candidate registry, while each
+new manifest describes 256 modeling documents. Final five-seed experiments are
+pending review of the frozen corpus. Existing files directly under
+`results/` and `assets/` are historical and are never loaded as the new dataset.
 They use the four existing corpus categories, so the default topic count is
 four. Main parameters are exposed as Python function arguments for
 reproducible reruns.
 
 ---
 
-## 6. Experimental Results Summary
+## 6. Historical Experimental Results Summary
+
+These tables and figures describe the old 100-document design, including the
+retired Campus sources. They are retained as historical results, not results
+for the new 256-document corpus. Re-run the experiments to obtain new metrics.
 
 ### Reproducibility revision
 
 The current protocol removes BITS navigation boilerplate before tokenization,
-uses deterministic five-restart PLSA with a 1000-iteration ceiling and
+uses seeded five-restart PLSA with a 1000-iteration ceiling and
 `tol=1e-6`, protects all real training documents during poison deduplication,
 and measures every model's fit time and peak memory at runtime. The attack
 comparison must be interpreted against the random-control condition and the

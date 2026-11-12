@@ -8,7 +8,7 @@ Includes:
 - Adversarial Potency metrics:
   * Injected word mass on target topic
   * Shift of non-target test documents toward target topic
-  * Relative log-likelihood degradation
+  * Common-corpus log-likelihood change per token
 """
 
 from typing import Dict, List, Optional, Tuple, Union
@@ -116,54 +116,72 @@ def compute_npmi_coherence(
     }
 
 
+def mean_log_likelihood_per_token(counts, p_w_z, p_z_d):
+    """Conditional log-likelihood in nats/token on one explicit evaluation matrix.
+
+    L(X; model) = sum_dw X_dw log(sum_k theta_dk phi_kw) / sum_dw X_dw.
+    Use identical X (rows, vocabulary and counts) for model comparisons. Document
+    proportions must come from the same inference protocol, not training rows
+    from datasets of different sizes. A common 1e-12 probability floor is used.
+    """
+    from scipy import sparse
+    total = float(counts.sum())
+    if total <= 0:
+        raise ValueError("Evaluation corpus must contain tokens")
+    probabilities = np.maximum(np.asarray(p_z_d) @ np.asarray(p_w_z), 1e-12)
+    if probabilities.shape != counts.shape:
+        raise ValueError("Evaluation counts and model probabilities must have identical shapes")
+    if sparse.issparse(counts):
+        coo = counts.tocoo()
+        likelihood = np.sum(coo.data * np.log(probabilities[coo.row, coo.col]))
+    else:
+        likelihood = np.sum(counts * np.log(probabilities))
+    return float(likelihood / total)
+
+
 def compute_attack_potency(
-    p_w_z: np.ndarray,
-    target_topic_idx: int,
+    model,
+    baseline_model,
+    *,
+    aligner,
+    baseline_aligner,
+    target_class_idx: int,
     injected_word_indices: List[int],
     test_p_z_d: np.ndarray,
-    baseline_test_p_z_d: Optional[np.ndarray] = None,
+    baseline_test_p_z_d: np.ndarray,
+    evaluation_counts: np.ndarray,
     non_target_mask: Optional[np.ndarray] = None,
-    train_ll: Optional[float] = None,
-    baseline_train_ll: Optional[float] = None,
 ) -> Dict[str, float]:
+    """Measure semantic target drift and common-corpus likelihood change.
+
+    Word mass uses this model's target-class topic. Test probabilities are
+    independently aligned to class order before comparison. For likelihood,
+    BOTH frozen models fold in the same clean training matrix X, including the
+    same vocabulary and token counts; their augmented training objectives are
+    never used. Delta = L(X; condition) - L(X; baseline), in nats/token.
+    Negative delta means worse fit to this shared corpus; this is an in-sample
+    diagnostic, not an independent generalization score or proof of attack success.
     """
-    Compute adversarial potency quantities defined in the plan:
-    1. Target-topic probability mass concentrated on the 20 injected poison words:
-       Mass = sum_{w in injected} P(w | target_topic)
-    2. Average test-document shift toward the target topic (especially non-target documents):
-       Mean( P(target_topic | d) ) or change vs clean baseline.
-    3. Change in log-likelihood (Delta LL = LL_poisoned - LL_baseline).
-    """
-    # 1. Word mass concentration
-    target_p_w = p_w_z[target_topic_idx]
-    injected_mass = float(np.sum(target_p_w[injected_word_indices]))
-
-    # 2. Topic shift on held-out documents
-    if non_target_mask is not None:
-        filtered_p_z_d = test_p_z_d[non_target_mask]
-    else:
-        filtered_p_z_d = test_p_z_d
-
-    avg_target_prob = float(np.mean(filtered_p_z_d[:, target_topic_idx]))
-
-    prob_shift = 0.0
-    if baseline_test_p_z_d is not None:
-        base_filtered = (
-            baseline_test_p_z_d[non_target_mask]
-            if non_target_mask is not None
-            else baseline_test_p_z_d
-        )
-        base_target_prob = float(np.mean(base_filtered[:, target_topic_idx]))
-        prob_shift = avg_target_prob - base_target_prob
-
-    # 3. Delta LL
-    delta_ll = 0.0
-    if train_ll is not None and baseline_train_ll is not None:
-        delta_ll = train_ll - baseline_train_ll
-
+    target_topic = aligner.class_to_topic_[target_class_idx]
+    injected_mass = float(np.sum(model.p_w_z[target_topic, injected_word_indices]))
+    aligned = aligner.align_proportions(test_p_z_d)
+    baseline_aligned = baseline_aligner.align_proportions(baseline_test_p_z_d)
+    if aligned.shape != baseline_aligned.shape:
+        raise ValueError("Both conditions must evaluate the same test documents/classes")
+    mask = non_target_mask if non_target_mask is not None else np.ones(len(aligned), dtype=bool)
+    if not np.any(mask):
+        raise ValueError("No test documents selected for target drift")
+    target_probability = float(np.mean(aligned[mask, target_class_idx]))
+    baseline_probability = float(np.mean(baseline_aligned[mask, target_class_idx]))
+    likelihood = mean_log_likelihood_per_token(
+        evaluation_counts, model.p_w_z, model.transform(evaluation_counts))
+    baseline_likelihood = mean_log_likelihood_per_token(
+        evaluation_counts, baseline_model.p_w_z, baseline_model.transform(evaluation_counts))
     return {
         "injected_words_target_mass": injected_mass,
-        "avg_test_target_prob": avg_target_prob,
-        "target_prob_shift": prob_shift,
-        "delta_log_likelihood": delta_ll,
+        "avg_test_target_prob": target_probability,
+        "target_prob_shift": target_probability - baseline_probability,
+        "eval_ll_per_token": likelihood,
+        "baseline_eval_ll_per_token": baseline_likelihood,
+        "delta_eval_ll_per_token": likelihood - baseline_likelihood,
     }
